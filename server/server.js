@@ -10,7 +10,7 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173", // URL of the React client
+    origin: process.env.CLIENT_ORIGIN || "http://localhost:5173", // URL of the React client or dynamic client origin from env
     methods: ["GET", "POST"]
   }
 });

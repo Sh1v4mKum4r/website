@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://Sh1v4mKum4r.github.io/website",
+  "homepage": "https://multiplayergames.in",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
