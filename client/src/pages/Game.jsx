@@ -133,7 +133,7 @@ function Game() {
     if (!isLocal) {
         socket.emit('leaveRoom');
     }
-    navigate('/lobby');
+    navigate('/games');
   };
 
   const checkLocalWinner = (currentBoard) => {
