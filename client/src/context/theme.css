@@ -1,0 +1,61 @@
+/* Theme CSS Variables */
+:root,
+[data-theme="dark"] {
+    --bg-primary: #0f0f1a;
+    --bg-secondary: #1f1f2e;
+    --bg-tertiary: #1a1a2e;
+    --bg-card: rgba(0, 0, 0, 0.4);
+    --bg-input: rgba(0, 0, 0, 0.3);
+    --text-primary: #ffffff;
+    --text-secondary: #bbbbbb;
+    --text-muted: #666666;
+    --accent: #00f2ff;
+    --accent-hover: #00c3cc;
+    --accent-secondary: #ff00cc;
+    --gradient-primary: linear-gradient(45deg, #ff00cc, #3333ff);
+    --gradient-bg: linear-gradient(90deg, #ff00cc, #3333ff);
+    --border-color: rgba(255, 255, 255, 0.1);
+    --border-hover: rgba(255, 255, 255, 0.2);
+    --shadow-color: rgba(0, 0, 0, 0.5);
+    --cell-bg: #1f1f2e;
+    --cell-hover: #29293d;
+    --navbar-bg: #1f1f2e;
+    --sidebar-bg: #1a1a2e;
+    --board-bg: #0044cc;
+    --board-border: #003399;
+    --empty-slot: #1a1a2e;
+    --win-color: #00ff88;
+    --error-color: #ff6b6b;
+    --chat-sender: #00f0ff;
+    --chat-sender-self: #00ff9d;
+}
+
+[data-theme="light"] {
+    --bg-primary: #f0f2f5;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #e8eaed;
+    --bg-card: rgba(255, 255, 255, 0.9);
+    --bg-input: rgba(0, 0, 0, 0.05);
+    --text-primary: #1a1a2e;
+    --text-secondary: #555555;
+    --text-muted: #999999;
+    --accent: #0088cc;
+    --accent-hover: #006699;
+    --accent-secondary: #cc0088;
+    --gradient-primary: linear-gradient(45deg, #cc0088, #2222cc);
+    --gradient-bg: linear-gradient(90deg, #cc0088, #2222cc);
+    --border-color: rgba(0, 0, 0, 0.1);
+    --border-hover: rgba(0, 0, 0, 0.2);
+    --shadow-color: rgba(0, 0, 0, 0.15);
+    --cell-bg: #e0e3e8;
+    --cell-hover: #d0d3d8;
+    --navbar-bg: #ffffff;
+    --sidebar-bg: #ffffff;
+    --board-bg: #2255bb;
+    --board-border: #1144aa;
+    --empty-slot: #c8ccd0;
+    --win-color: #00cc66;
+    --error-color: #dd3333;
+    --chat-sender: #0088cc;
+    --chat-sender-self: #00aa66;
+}

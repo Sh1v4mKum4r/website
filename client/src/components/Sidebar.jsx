@@ -1,7 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '../context/ToastContext';
+import { useLobby } from '../context/LobbyContext';
 import { socket } from '../socket';
+import Chat from './Chat';
 import './Sidebar.css';
+
+const gameRouteMap = { tictactoe: 'tic-tac-toe', connect4: 'connect4' };
+const gameNameMap = { tictactoe: 'Tic Tac Toe', connect4: 'Connect 4' };
 
 function Sidebar({ isOpen, onClose }) {
   const [step, setStep] = useState('entry'); // 'entry' | 'lobby'
@@ -12,7 +18,14 @@ function Sidebar({ isOpen, onClose }) {
   const [lobbyPlayers, setLobbyPlayers] = useState([]);
   const [lobbyRooms, setLobbyRooms] = useState([]);
   const [error, setError] = useState('');
+  const [chatMessages, setChatMessages] = useState([]);
   const navigate = useNavigate();
+  const { addToast } = useToast();
+  const { setLobbyCode: setContextLobbyCode, setPlayerName: setContextPlayerName } = useLobby();
+
+  const handleNewMessage = useCallback((msg) => {
+    setChatMessages((prev) => [...prev, msg]);
+  }, []);
 
   useEffect(() => {
     socket.on('lobbyUpdate', ({ players, rooms }) => {
@@ -20,10 +33,13 @@ function Sidebar({ isOpen, onClose }) {
       setLobbyRooms(rooms);
     });
 
+    socket.on('receiveMessage', handleNewMessage);
+
     return () => {
       socket.off('lobbyUpdate');
+      socket.off('receiveMessage', handleNewMessage);
     };
-  }, []);
+  }, [handleNewMessage]);
 
   // Refresh lobby state when sidebar opens and we're already in a lobby
   useEffect(() => {
@@ -47,6 +63,8 @@ function Sidebar({ isOpen, onClose }) {
       console.log("Create lobby result:", success, lobbyCode);
       if (success) {
         setMyLobbyCode(lobbyCode);
+        setContextLobbyCode(lobbyCode);
+        setContextPlayerName(name);
         setStep('lobby');
       }
     });
@@ -61,31 +79,35 @@ function Sidebar({ isOpen, onClose }) {
       console.log("Join lobby result:", success, error);
       if (error) return setError(error);
       setMyLobbyCode(lobbyCode.toUpperCase());
+      setContextLobbyCode(lobbyCode.toUpperCase());
+      setContextPlayerName(name);
       setStep('lobby');
     });
   };
 
   const handleCreateRoom = () => {
     socket.emit('createRoom', ({ code, role, error }) => {
-      if (error) return alert(error);
+      if (error) return addToast(error, 'error');
       onClose();
       navigate(`/game/tic-tac-toe/${code}`, { state: { role, lobbyCode: myLobbyCode, playerName: name } });
     });
   };
 
-  const handleJoinRoom = (roomCode) => {
+  const handleJoinRoom = (roomCode, gameType) => {
     socket.emit('joinRoom', roomCode, ({ code, role, gameData, error }) => {
-      if (error) return alert(error);
+      if (error) return addToast(error, 'error');
       onClose();
-      navigate(`/game/tic-tac-toe/${code}`, { state: { role, lobbyCode: myLobbyCode, gameData, playerName: name } });
+      const routeSlug = gameRouteMap[gameType] || 'tic-tac-toe';
+      navigate(`/game/${routeSlug}/${code}`, { state: { role, lobbyCode: myLobbyCode, gameData, playerName: name, gameType } });
     });
   };
 
-  const handleWatchRoom = (roomCode) => {
+  const handleWatchRoom = (roomCode, gameType) => {
     socket.emit('spectateRoom', roomCode, ({ gameData, error }) => {
-      if (error) return alert(error);
+      if (error) return addToast(error, 'error');
       onClose();
-      navigate(`/game/tic-tac-toe/${roomCode}`, { state: { role: 'spectator', lobbyCode: myLobbyCode, gameData } });
+      const routeSlug = gameRouteMap[gameType] || 'tic-tac-toe';
+      navigate(`/game/${routeSlug}/${roomCode}`, { state: { role: 'spectator', lobbyCode: myLobbyCode, gameData, gameType } });
     });
   };
 
@@ -94,6 +116,8 @@ function Sidebar({ isOpen, onClose }) {
     setStep('entry');
     setMode(null);
     setMyLobbyCode(null);
+    setContextLobbyCode(null);
+    setContextPlayerName('');
     setLobbyPlayers([]);
     setLobbyRooms([]);
   };
@@ -165,7 +189,7 @@ function Sidebar({ isOpen, onClose }) {
             <div className="section">
               <div className="section-title">
                 <h3>Game Rooms</h3>
-                <button className="small-btn" onClick={handleCreateRoom}>+ New</button>
+                <button className="small-btn" onClick={() => { onClose(); navigate('/games'); }}>+ New</button>
               </div>
               <div className="list-container">
                 {lobbyRooms.length === 0 ? (
@@ -174,21 +198,21 @@ function Sidebar({ isOpen, onClose }) {
                   lobbyRooms.map(room => (
                     <div key={room.code} className="list-item room">
                       <div className="info">
-                        <span className="game-name">Tic Tac Toe</span>
+                        <span className="game-name">{gameNameMap[room.gameType] || 'Tic Tac Toe'}</span>
                         <span className="players">{room.playerNames.join(' vs ')}</span>
                         {room.spectatorCount > 0 && <span className="spectator-count">👁 {room.spectatorCount}</span>}
                       </div>
                       {room.isFull ? (
                         <button
                           className="watch-btn"
-                          onClick={() => handleWatchRoom(room.code)}
+                          onClick={() => handleWatchRoom(room.code, room.gameType)}
                         >
                           Watch
                         </button>
                       ) : (
                         <button
                           className="join-btn"
-                          onClick={() => handleJoinRoom(room.code)}
+                          onClick={() => handleJoinRoom(room.code, room.gameType)}
                         >
                           Join
                         </button>
@@ -213,6 +237,11 @@ function Sidebar({ isOpen, onClose }) {
                   ))
                 )}
               </div>
+            </div>
+
+            <div className="section chat-section">
+              <h3>Lobby Chat</h3>
+              <Chat roomCode={`lobby:${myLobbyCode}`} senderName={name} messages={chatMessages} />
             </div>
           </div>
         )}

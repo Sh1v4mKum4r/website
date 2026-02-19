@@ -1,28 +1,203 @@
 .games-container {
-    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    padding: 20px;
 }
 
+/* Category Tabs */
+.category-tabs {
+    display: flex;
+    gap: 8px;
+    margin-top: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 6px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.category-tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary, #888);
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+}
+
+.category-tab:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary, #fff);
+}
+
+.category-tab.active {
+    background: rgba(0, 240, 255, 0.15);
+    color: #00f0ff;
+    box-shadow: 0 0 15px rgba(0, 240, 255, 0.15);
+}
+
+.tab-icon {
+    font-size: 1.1rem;
+}
+
+.tab-label {
+    font-weight: 600;
+}
+
+.category-desc {
+    color: var(--text-secondary, #888);
+    font-size: 0.9rem;
+    margin: 12px 0 0;
+}
+
+/* Game Cards */
 .game-list {
     display: flex;
-    justify-content: center;
     gap: 20px;
-    margin-top: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 25px;
 }
 
 .game-selection-card {
-    background-color: #1f1f2e;
-    padding: 20px 40px;
-    border-radius: 10px;
-    border: 2px solid transparent;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 30px;
+    border-radius: 12px;
+    width: 220px;
     cursor: pointer;
-    transition: border-color 0.2s;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    position: relative;
 }
 
 .game-selection-card:hover {
-    border-color: #00f2ff;
+    transform: translateY(-5px);
+    border-color: #00f0ff;
+    box-shadow: 0 5px 20px rgba(0, 240, 255, 0.25);
 }
 
 .game-selection-card h3 {
     margin: 0 0 10px 0;
-    color: #00f2ff;
+    color: #fff;
+    font-size: 1.3rem;
+}
+
+.game-selection-card p {
+    color: #aaa;
+    margin: 0 0 15px;
+    font-size: 0.85rem;
+}
+
+.play-badge {
+    display: inline-block;
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-family: 'Orbitron', sans-serif;
+    background: rgba(0, 240, 255, 0.15);
+    color: #00f0ff;
+    border: 1px solid rgba(0, 240, 255, 0.3);
+}
+
+/* Coming Soon Card */
+.coming-soon-card {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+    padding: 40px 60px;
+    border-radius: 12px;
+    text-align: center;
+    opacity: 0.7;
+}
+
+.coming-soon-icon {
+    font-size: 2.5rem;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.coming-soon-card h3 {
+    margin: 0 0 8px;
+    color: #fff;
+    font-size: 1.2rem;
+}
+
+.coming-soon-card p {
+    color: #888;
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+/* Series Selector */
+.series-selector {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+    color: #aaa;
+    font-size: 0.95rem;
+}
+
+.series-options {
+    display: flex;
+    gap: 6px;
+}
+
+.series-option {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #ccc;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    font-family: 'Orbitron', sans-serif;
+}
+
+.series-option:hover {
+    border-color: #00f0ff;
+    color: #fff;
+}
+
+.series-option.active {
+    background: rgba(0, 240, 255, 0.2);
+    border-color: #00f0ff;
+    color: #00f0ff;
+    font-weight: bold;
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+    .category-tabs {
+        flex-direction: column;
+        width: 90%;
+    }
+
+    .category-tab {
+        justify-content: center;
+    }
+
+    .game-list {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .game-selection-card {
+        width: 85%;
+    }
+
+    .series-selector {
+        flex-direction: column;
+        gap: 8px;
+    }
 }
