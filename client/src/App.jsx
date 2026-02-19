@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Home from './pages/Home';
 import Games from './pages/Games';
 import Game from './pages/Game';
@@ -16,6 +16,7 @@ function App() {
             <Route path="/games" element={<Games />} />
             <Route path="/game/tic-tac-toe/:roomCode" element={<Game />} />
           </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
     </Router>
