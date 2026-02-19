@@ -3,9 +3,10 @@
 body {
     margin: 0;
     font-family: 'Orbitron', sans-serif;
-    background: #0f0f1a;
-    color: white;
+    background: var(--bg-primary);
+    color: var(--text-primary);
     text-align: center;
+    transition: background 0.3s, color 0.3s;
 }
 
 .App {
@@ -28,6 +29,7 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    padding: 20px;
 }
 
 .hero h1 {
@@ -37,31 +39,33 @@ body {
 
 .hero p {
     font-size: 18px;
-    color: #bbb;
+    color: var(--text-secondary);
 }
 
 .btn {
     margin-top: 30px;
     padding: 15px 30px;
-    background: #00f2ff;
-    color: black;
+    background: var(--accent);
+    color: var(--bg-primary);
     font-size: 18px;
     border: none;
     cursor: pointer;
     border-radius: 8px;
     transition: 0.3s;
     font-family: 'Orbitron', sans-serif;
+    font-weight: bold;
 }
 
 .btn:hover {
-    background: #00c3cc;
+    background: var(--accent-hover);
+    transform: scale(1.03);
 }
 
 .home-footer {
     width: 100%;
     padding: 20px;
     font-size: 14px;
-    color: #666;
+    color: var(--text-muted);
     box-sizing: border-box;
 }
 
@@ -73,4 +77,29 @@ body {
     align-items: center;
     width: 100%;
     box-sizing: border-box;
+}
+
+/* F10: Mobile Optimization */
+@media (max-width: 600px) {
+    .hero h1 {
+        font-size: 28px;
+    }
+
+    .hero p {
+        font-size: 14px;
+    }
+
+    .btn {
+        padding: 12px 24px;
+        font-size: 16px;
+        min-height: 44px;
+    }
+
+    .main-content {
+        padding: 15px;
+    }
+
+    .home-header {
+        font-size: 18px;
+    }
 }
