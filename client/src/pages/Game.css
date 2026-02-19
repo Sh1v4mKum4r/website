@@ -1,8 +1,8 @@
 .game-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
 }
 
 #turnIndicator {
@@ -13,5 +13,23 @@
 }
 
 #restart {
-    margin-top: 10px;
+  margin-top: 10px;
+}
+
+.spectator-badge {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  display: inline-block;
+}
+
+.player-names {
+  font-size: 16px;
+  color: #c084fc;
+  font-weight: 500;
+  letter-spacing: 0.5px;
 }
