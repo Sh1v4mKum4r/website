@@ -5,3 +5,18 @@
   justify-content: center;
   margin-top: 10px;
 }
+
+/* F10: Responsive board */
+@media (max-width: 600px) {
+  .board {
+    grid-template-columns: repeat(3, 80px);
+    gap: 8px;
+  }
+}
+
+@media (max-width: 400px) {
+  .board {
+    grid-template-columns: repeat(3, 70px);
+    gap: 6px;
+  }
+}

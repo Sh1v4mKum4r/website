@@ -3,8 +3,8 @@ import './Cell.css';
 
 function Cell({ value, onClick, isWinning }) {
   return (
-    <div 
-      className={`cell ${isWinning ? 'winning' : ''}`}
+    <div
+      className={`cell ${isWinning ? 'winning' : ''} ${value ? 'placed' : ''}`}
       onClick={onClick}
     >
       {value}
