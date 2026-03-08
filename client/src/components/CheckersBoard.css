@@ -1,0 +1,85 @@
+.checkers-board {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    width: 100%;
+    max-width: 600px;
+    aspect-ratio: 1 / 1;
+    margin: 20px auto;
+    border: 4px solid #3d2b1f; /* Dark wood border */
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.checkers-cell {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+.checkers-cell.light {
+    background-color: #e5c29f; /* Light wood */
+}
+
+.checkers-cell.dark {
+    background-color: #7b4329; /* Dark wood */
+}
+
+.checkers-cell.selected::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border: 3px solid #00f2ff;
+    box-shadow: inset 0 0 10px #00f2ff;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.checkers-piece {
+    width: 80%;
+    height: 80%;
+    border-radius: 50%;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.6), inset 0 2px 4px rgba(255,255,255,0.2);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: transform 0.2s;
+    cursor: pointer;
+}
+
+.checkers-piece:active {
+    transform: scale(0.95);
+}
+
+.checkers-piece.red {
+    background: radial-gradient(circle at 30% 30%, #ff4b4b, #aa0000);
+    border: 2px solid #660000;
+}
+
+.checkers-piece.black {
+    background: radial-gradient(circle at 30% 30%, #555, #111);
+    border: 2px solid #000;
+}
+
+.checkers-piece.king {
+    border: 3px solid gold;
+    box-shadow: 0 0 10px gold, 0 4px 6px rgba(0,0,0,0.6), inset 0 2px 4px rgba(255,255,255,0.2);
+}
+
+.crown {
+    color: gold;
+    font-size: 2vw; /* Responsive based on viewport, fallback later */
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+    pointer-events: none;
+}
+
+@media (min-width: 600px) {
+    .crown {
+        font-size: 24px;
+    }
+}

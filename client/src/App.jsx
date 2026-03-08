@@ -19,9 +19,9 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route element={<MainLayout />}>
                 <Route path="/games" element={<Games />} />
-                <Route path="/game/tic-tac-toe/:roomCode" element={<Game />} />
                 <Route path="/game/connect4/:roomCode" element={<Game />} />
                 <Route path="/game/othello/:roomCode" element={<Game />} />
+                <Route path="/game/checkers/:roomCode" element={<Game />} />
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

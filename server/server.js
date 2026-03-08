@@ -3,6 +3,7 @@ const http = require('http');
 const { Server } = require("socket.io");
 const cors = require('cors');
 const { makeTicTacToeMove, makeConnect4Move, makeOthelloMove } = require('./utils/gameLogic');
+const { getInitialCheckersBoard, makeCheckersMove } = require('./utils/checkersLogic');
 
 const app = express();
 app.use(cors());
@@ -34,7 +35,10 @@ const startTurnTimer = (lobbyCode, roomCode) => {
     io.to(roomCode).emit('timerUpdate', { timeLeft: room.timeLeft });
     if (room.timeLeft <= 0) {
       clearTurnTimer(roomCode);
-      handleGameResult(room, { winner: room.turn === 'X' ? 'O' : 'X', line: null, timeout: true }, roomCode);
+      let winningRole = 'X';
+      if (room.gameType === 'checkers') winningRole = room.turn === 'b' ? 'r' : 'b';
+      else winningRole = room.turn === 'X' ? 'O' : 'X';
+      handleGameResult(room, { winner: winningRole, line: null, timeout: true }, roomCode);
       io.to(roomCode).emit('gameUpdate', room);
     }
   }, 1000);
@@ -165,25 +169,31 @@ io.on('connection', (socket) => {
     const generateCode = (len) => Math.random().toString(36).substring(2, 2 + len).toUpperCase();
     do { roomCode = generateCode(4); } while (lobby.rooms[roomCode]);
 
-    const boardSize = gameType === 'connect4' ? 42 : (gameType === 'othello' ? 64 : 9);
-    const board = Array(boardSize).fill(null);
+    const boardSize = gameType === 'connect4' ? 42 : (gameType === 'othello' || gameType === 'checkers' ? 64 : 9);
+    let board;
     if (gameType === 'othello') {
+      board = Array(boardSize).fill(null);
       board[27] = 'O';
       board[28] = 'X';
       board[35] = 'X';
       board[36] = 'O';
+    } else if (gameType === 'checkers') {
+      board = getInitialCheckersBoard();
+    } else {
+      board = Array(boardSize).fill(null);
     }
 
     lobby.rooms[roomCode] = {
       gameType,
-      players: { [socket.id]: "X" },
+      players: { [socket.id]: gameType === 'checkers' ? "b" : "X" },
       playerNames: [playerName],
       spectators: [],
       board,
-      turn: "X",
-      score: { X: 0, O: 0 },
+      turn: gameType === 'checkers' ? "b" : "X",
+      score: { X: 0, O: 0, b: 0, r: 0 },
       seriesLength: seriesLength || 0,
       chatHistory: [],
+      mustMoveIndex: null,
     };
 
     socket.join(roomCode);
@@ -216,20 +226,21 @@ io.on('connection', (socket) => {
     }
 
     const playerName = lobby.players.find(p => p.id === socket.id)?.name || "Unknown";
-    room.players[socket.id] = "O";
+    const assignedRole = room.gameType === 'checkers' ? "r" : "O";
+    room.players[socket.id] = assignedRole;
     room.playerNames.push(playerName);
 
     socket.join(roomCode);
     console.log(`${playerName} joined room ${roomCode}`);
 
-    callback({ code: roomCode, role: "O", gameData: { board: room.board, turn: room.turn, score: room.score, playerNames: room.playerNames, gameType: room.gameType, seriesLength: room.seriesLength || 0, chatHistory: room.chatHistory || [] } });
+    callback({ code: roomCode, role: room.players[socket.id], gameData: { board: room.board, turn: room.turn, score: room.score, playerNames: room.playerNames, gameType: room.gameType, seriesLength: room.seriesLength || 0, chatHistory: room.chatHistory || [] } });
     io.to(roomCode).emit("gameStart", room);
     startTurnTimer(lobbyCode, roomCode);
     broadcastLobbyState(lobbyCode);
   });
 
   // Make a move
-  socket.on("makeMove", ({ code, index, player }) => {
+  socket.on("makeMove", ({ code, index, player, data }) => {
     const lobbyCode = socketToLobby[socket.id];
     if (!lobbyCode) return;
 
@@ -241,19 +252,28 @@ io.on('connection', (socket) => {
       moveResult = makeConnect4Move(room.board, index, player); // index is column for Connect 4
     } else if (room.gameType === 'othello') {
       moveResult = makeOthelloMove(room.board, index, player);
+    } else if (room.gameType === 'checkers') {
+      moveResult = makeCheckersMove(room.board, data.fromIndex, data.toIndex, player, room.mustMoveIndex);
     } else {
       moveResult = makeTicTacToeMove(room.board, index, player);
     }
 
     if (moveResult.valid) {
       room.board = moveResult.board;
+      if (room.gameType === 'checkers') {
+        room.mustMoveIndex = moveResult.mustMoveIndex || null;
+      }
       const result = moveResult.result;
 
       if (result) {
         handleGameResult(room, result, code);
         clearTurnTimer(code);
       } else {
-        room.turn = moveResult.nextTurn || (player === "X" ? "O" : "X");
+        if (room.gameType === 'checkers') {
+          room.turn = moveResult.nextTurn || (player === "b" ? "r" : "b");
+        } else {
+          room.turn = moveResult.nextTurn || (player === "X" ? "O" : "X");
+        }
         startTurnTimer(lobbyCode, code);
       }
       io.to(code).emit("gameUpdate", room);
@@ -267,16 +287,22 @@ io.on('connection', (socket) => {
 
     const room = lobbies[lobbyCode]?.rooms[code];
     if (room) {
-      const boardSize = room.gameType === 'connect4' ? 42 : (room.gameType === 'othello' ? 64 : 9);
-      const board = Array(boardSize).fill(null);
+      const boardSize = room.gameType === 'connect4' ? 42 : (room.gameType === 'othello' || room.gameType === 'checkers' ? 64 : 9);
+      let board;
       if (room.gameType === 'othello') {
+        board = Array(boardSize).fill(null);
         board[27] = 'O';
         board[28] = 'X';
         board[35] = 'X';
         board[36] = 'O';
+      } else if (room.gameType === 'checkers') {
+        board = getInitialCheckersBoard();
+      } else {
+        board = Array(boardSize).fill(null);
       }
       room.board = board;
-      room.turn = "X";
+      room.turn = room.gameType === 'checkers' ? 'b' : 'X';
+      room.mustMoveIndex = null;
       room.result = null;
       io.to(code).emit("gameUpdate", room);
       if (Object.keys(room.players).length >= 2) {
@@ -300,16 +326,22 @@ io.on('connection', (socket) => {
         room.score = { X: 0, O: 0 };
         room.seriesWinner = null;
       }
-      const boardSize = room.gameType === 'connect4' ? 42 : (room.gameType === 'othello' ? 64 : 9);
-      const board = Array(boardSize).fill(null);
+      const boardSize = room.gameType === 'connect4' ? 42 : (room.gameType === 'othello' || room.gameType === 'checkers' ? 64 : 9);
+      let board;
       if (room.gameType === 'othello') {
+        board = Array(boardSize).fill(null);
         board[27] = 'O';
         board[28] = 'X';
         board[35] = 'X';
         board[36] = 'O';
+      } else if (room.gameType === 'checkers') {
+        board = getInitialCheckersBoard();
+      } else {
+        board = Array(boardSize).fill(null);
       }
       room.board = board;
-      room.turn = "X";
+      room.turn = room.gameType === 'checkers' ? 'b' : 'X';
+      room.mustMoveIndex = null;
       room.result = null;
       room.rematchRequests = [];
       io.to(code).emit("gameUpdate", room);
