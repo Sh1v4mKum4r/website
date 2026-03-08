@@ -2,7 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
 const cors = require('cors');
-const { makeTicTacToeMove, makeConnect4Move } = require('./utils/gameLogic');
+const { makeTicTacToeMove, makeConnect4Move, makeOthelloMove } = require('./utils/gameLogic');
 
 const app = express();
 app.use(cors());
@@ -165,14 +165,21 @@ io.on('connection', (socket) => {
     const generateCode = (len) => Math.random().toString(36).substring(2, 2 + len).toUpperCase();
     do { roomCode = generateCode(4); } while (lobby.rooms[roomCode]);
 
-    const boardSize = gameType === 'connect4' ? 42 : 9;
+    const boardSize = gameType === 'connect4' ? 42 : (gameType === 'othello' ? 64 : 9);
+    const board = Array(boardSize).fill(null);
+    if (gameType === 'othello') {
+      board[27] = 'O';
+      board[28] = 'X';
+      board[35] = 'X';
+      board[36] = 'O';
+    }
 
     lobby.rooms[roomCode] = {
       gameType,
       players: { [socket.id]: "X" },
       playerNames: [playerName],
       spectators: [],
-      board: Array(boardSize).fill(null),
+      board,
       turn: "X",
       score: { X: 0, O: 0 },
       seriesLength: seriesLength || 0,
@@ -232,6 +239,8 @@ io.on('connection', (socket) => {
     let moveResult;
     if (room.gameType === 'connect4') {
       moveResult = makeConnect4Move(room.board, index, player); // index is column for Connect 4
+    } else if (room.gameType === 'othello') {
+      moveResult = makeOthelloMove(room.board, index, player);
     } else {
       moveResult = makeTicTacToeMove(room.board, index, player);
     }
@@ -244,7 +253,7 @@ io.on('connection', (socket) => {
         handleGameResult(room, result, code);
         clearTurnTimer(code);
       } else {
-        room.turn = player === "X" ? "O" : "X";
+        room.turn = moveResult.nextTurn || (player === "X" ? "O" : "X");
         startTurnTimer(lobbyCode, code);
       }
       io.to(code).emit("gameUpdate", room);
@@ -258,8 +267,15 @@ io.on('connection', (socket) => {
 
     const room = lobbies[lobbyCode]?.rooms[code];
     if (room) {
-      const boardSize = room.gameType === 'connect4' ? 42 : 9;
-      room.board = Array(boardSize).fill(null);
+      const boardSize = room.gameType === 'connect4' ? 42 : (room.gameType === 'othello' ? 64 : 9);
+      const board = Array(boardSize).fill(null);
+      if (room.gameType === 'othello') {
+        board[27] = 'O';
+        board[28] = 'X';
+        board[35] = 'X';
+        board[36] = 'O';
+      }
+      room.board = board;
       room.turn = "X";
       room.result = null;
       io.to(code).emit("gameUpdate", room);
@@ -284,8 +300,15 @@ io.on('connection', (socket) => {
         room.score = { X: 0, O: 0 };
         room.seriesWinner = null;
       }
-      const boardSize = room.gameType === 'connect4' ? 42 : 9;
-      room.board = Array(boardSize).fill(null);
+      const boardSize = room.gameType === 'connect4' ? 42 : (room.gameType === 'othello' ? 64 : 9);
+      const board = Array(boardSize).fill(null);
+      if (room.gameType === 'othello') {
+        board[27] = 'O';
+        board[28] = 'X';
+        board[35] = 'X';
+        board[36] = 'O';
+      }
+      room.board = board;
       room.turn = "X";
       room.result = null;
       room.rematchRequests = [];
