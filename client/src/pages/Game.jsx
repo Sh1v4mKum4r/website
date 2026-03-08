@@ -3,6 +3,8 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { socket } from '../socket';
 import Board from '../components/Board';
 import Connect4Board from '../components/Connect4Board';
+import OthelloBoard from '../components/OthelloBoard';
+import { makeOthelloMove } from '../utils/othelloLogic';
 import Chat from '../components/Chat';
 import { playMove, playWin, playLose, playJoin, playTimeout, playTick } from '../utils/sounds';
 import './Game.css';
@@ -13,7 +15,16 @@ function Game() {
   const navigate = useNavigate();
 
   const initialGameType = location.state?.gameType || 'tictactoe';
-  const [board, setBoard] = useState(Array(initialGameType === 'connect4' ? 42 : 9).fill(null));
+  const getInitialBoard = (gType) => {
+    if (gType === 'connect4') return Array(42).fill(null);
+    if (gType === 'othello') {
+      const b = Array(64).fill(null);
+      b[27] = 'O'; b[28] = 'X'; b[35] = 'X'; b[36] = 'O';
+      return b;
+    }
+    return Array(9).fill(null);
+  };
+  const [board, setBoard] = useState(getInitialBoard(initialGameType));
   const [turn, setTurn] = useState("X");
   const [myRole, setMyRole] = useState(location.state?.role || null);
   const [gameType, setGameType] = useState(location.state?.gameType || 'tictactoe');
@@ -262,6 +273,18 @@ function Game() {
           } else {
             setTurn(turn === "X" ? "O" : "X");
           }
+        } else if (gameType === 'othello') {
+          const moveResult = makeOthelloMove(board, index, turn);
+          if (!moveResult.valid) return;
+          
+          setBoard(moveResult.board);
+          if (moveResult.result) {
+            setResult(moveResult.result);
+            if (moveResult.result.winner === 'draw') setGameMessage("It's a draw!");
+            else setGameMessage(`Player ${moveResult.result.winner} wins!`);
+          } else {
+            setTurn(moveResult.nextTurn);
+          }
         } else {
           if (board[index]) return;
           const newBoard = [...board];
@@ -287,7 +310,7 @@ function Game() {
 
   const handleRestart = () => {
     if (isLocal) {
-      setBoard(Array(gameType === 'connect4' ? 42 : 9).fill(null));
+      setBoard(getInitialBoard(gameType));
       setTurn("X");
       setResult(null);
       setGameMessage("Player X's Turn");
@@ -372,7 +395,7 @@ function Game() {
 
   return (
     <div className="game-container">
-      <h2>{gameType === 'connect4' ? 'Connect 4' : 'Tic Tac Toe'}</h2>
+      <h2>{gameType === 'connect4' ? 'Connect 4' : gameType === 'othello' ? 'Othello' : 'Tic Tac Toe'}</h2>
       {isSpectator && <div className="spectator-badge">👁 Spectating</div>}
       {!isLocal && !isSpectator && myName && <div className="player-names">Playing as {myName} ({myRole})</div>}
       {isSpectator && playerNames.length >= 2 && (
@@ -391,7 +414,13 @@ function Game() {
         </div>
       )}
 
-      <div id="scoreboard">X: {score.X} | O: {score.O}</div>
+      <div id="scoreboard">
+        {gameType === 'othello' ? (
+          `Black (X): ${board.filter(c => c === 'X').length} | White (O): ${board.filter(c => c === 'O').length}`
+        ) : (
+          `X: ${score.X} | O: ${score.O}`
+        )}
+      </div>
 
       {/* F4: Timer */}
       {timeLeft !== null && !result && (
@@ -402,6 +431,8 @@ function Game() {
 
       {gameType === 'connect4' ? (
         <Connect4Board board={board} onColumnClick={handleCellClick} winningLine={result?.line} turn={turn} />
+      ) : gameType === 'othello' ? (
+        <OthelloBoard board={board} onCellClick={handleCellClick} turn={turn} />
       ) : (
         <Board board={board} onCellClick={handleCellClick} winningLine={result?.line} />
       )}
