@@ -6,8 +6,8 @@ import { socket } from '../socket';
 import Chat from './Chat';
 import './Sidebar.css';
 
-const gameRouteMap = { tictactoe: 'tic-tac-toe', connect4: 'connect4', othello: 'othello' };
-const gameNameMap = { tictactoe: 'Tic Tac Toe', connect4: 'Connect 4', othello: 'Othello' };
+const gameRouteMap = { tictactoe: 'tic-tac-toe', connect4: 'connect4', othello: 'othello', checkers: 'checkers' };
+const gameNameMap = { tictactoe: 'Tic Tac Toe', connect4: 'Connect 4', othello: 'Othello', checkers: 'Checkers' };
 
 function Sidebar({ isOpen, onClose }) {
   const [step, setStep] = useState('entry'); // 'entry' | 'lobby'
