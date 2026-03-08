@@ -20,6 +20,16 @@
   transform: scale(0.97);
 }
 
+.cell.x {
+  color: var(--accent-secondary);
+  text-shadow: 0 0 10px var(--accent-secondary);
+}
+
+.cell.o {
+  color: var(--accent);
+  text-shadow: 0 0 10px var(--accent);
+}
+
 .cell.winning {
   background: var(--win-color) !important;
   color: var(--bg-primary);

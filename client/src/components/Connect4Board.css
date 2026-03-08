@@ -1,11 +1,11 @@
 .c4-board {
     display: flex;
-    background-color: var(--board-bg);
+    background-color: var(--bg-secondary);
     padding: 10px;
     border-radius: 10px;
     gap: 5px;
     box-shadow: 0 10px 20px var(--shadow-color);
-    border: 4px solid var(--board-border);
+    border: 4px solid var(--accent);
 }
 
 .c4-column {
@@ -33,7 +33,7 @@
 .c4-circle {
     width: 100%;
     height: 100%;
-    background-color: var(--empty-slot);
+    background-color: var(--bg-primary);
     border-radius: 50%;
     box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
     transition: background-color 0.1s;
@@ -45,13 +45,13 @@
 }
 
 .c4-cell.x .c4-circle {
-    background-color: #ff00cc;
-    box-shadow: 0 0 10px #ff00cc, inset 0 -2px 5px rgba(0, 0, 0, 0.2);
+    background: var(--gradient-primary);
+    box-shadow: 0 0 10px var(--accent-secondary), inset 0 -2px 5px rgba(0, 0, 0, 0.2);
 }
 
 .c4-cell.o .c4-circle {
-    background-color: #ffae00;
-    box-shadow: 0 0 10px #ffae00, inset 0 -2px 5px rgba(0, 0, 0, 0.2);
+    background: var(--accent);
+    box-shadow: 0 0 10px var(--accent), inset 0 -2px 5px rgba(0, 0, 0, 0.2);
 }
 
 .c4-cell.win .c4-circle {
@@ -96,7 +96,7 @@
 }
 
 .turn-o .c4-column:hover .c4-cell:not(.x):not(.o):first-child .c4-circle {
-    background-color: rgba(255, 174, 0, 0.25);
+    background-color: rgba(0, 242, 255, 0.25);
 }
 
 @media (max-width: 600px) {

@@ -4,7 +4,7 @@ import './Cell.css';
 function Cell({ value, onClick, isWinning }) {
   return (
     <div
-      className={`cell ${isWinning ? 'winning' : ''} ${value ? 'placed' : ''}`}
+      className={`cell ${isWinning ? 'winning' : ''} ${value ? 'placed' : ''} ${value ? value.toLowerCase() : ''}`}
       onClick={onClick}
     >
       {value}
