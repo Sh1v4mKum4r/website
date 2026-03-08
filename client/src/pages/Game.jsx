@@ -4,7 +4,9 @@ import { socket } from '../socket';
 import Board from '../components/Board';
 import Connect4Board from '../components/Connect4Board';
 import OthelloBoard from '../components/OthelloBoard';
+import CheckersBoard from '../components/CheckersBoard';
 import { makeOthelloMove } from '../utils/othelloLogic';
+import { getInitialCheckersBoard, makeCheckersMove } from '../utils/checkersLogic';
 import Chat from '../components/Chat';
 import { playMove, playWin, playLose, playJoin, playTimeout, playTick } from '../utils/sounds';
 import './Game.css';
@@ -22,10 +24,12 @@ function Game() {
       b[27] = 'O'; b[28] = 'X'; b[35] = 'X'; b[36] = 'O';
       return b;
     }
+    if (gType === 'checkers') return getInitialCheckersBoard();
     return Array(9).fill(null);
   };
   const [board, setBoard] = useState(getInitialBoard(initialGameType));
-  const [turn, setTurn] = useState("X");
+  const [turn, setTurn] = useState(initialGameType === 'checkers' ? 'b' : "X");
+  const [mustMoveIndex, setMustMoveIndex] = useState(null);
   const [myRole, setMyRole] = useState(location.state?.role || null);
   const [gameType, setGameType] = useState(location.state?.gameType || 'tictactoe');
   const [score, setScore] = useState({ X: 0, O: 0 });
@@ -65,7 +69,7 @@ function Game() {
     if (roomCode === 'local') {
       setIsLocal(true);
       setGameStarted(true);
-      setGameMessage("Player X's Turn");
+      setGameMessage(initialGameType === 'checkers' ? "Player b's Turn" : "Player X's Turn");
     } else {
       const roleFromState = location.state?.role;
       const gameDataFromState = location.state?.gameData;
@@ -207,6 +211,7 @@ function Game() {
     if (data.seriesLength !== undefined) setSeriesLength(data.seriesLength);
     if (data.seriesWinner !== undefined) setSeriesWinner(data.seriesWinner);
     if (data.timeLeft !== undefined) setTimeLeft(data.timeLeft);
+    if (data.mustMoveIndex !== undefined) setMustMoveIndex(data.mustMoveIndex);
     if (data.result) {
       setResult(data.result);
       setTimeLeft(null);
@@ -308,12 +313,36 @@ function Game() {
     }
   };
 
+  const handleCheckersMove = (fromIndex, toIndex) => {
+    if (isSpectator || result) return;
+    if (isLocal) {
+        if (!turn) return;
+        const moveResult = makeCheckersMove(board, fromIndex, toIndex, turn, mustMoveIndex);
+        if (!moveResult.valid) return;
+        
+        setBoard(moveResult.board);
+        setMustMoveIndex(moveResult.mustMoveIndex);
+        if (moveResult.result) {
+            setResult(moveResult.result);
+            if (moveResult.result.winner === 'draw') setGameMessage("It's a draw!");
+            else setGameMessage(`Player ${moveResult.result.winner} wins!`);
+        } else {
+            setTurn(moveResult.nextTurn);
+        }
+    } else {
+        if (turn === myRole) {
+            socket.emit("makeMove", { code: roomCode, index: null, player: myRole, data: { fromIndex, toIndex } });
+        }
+    }
+  };
+
   const handleRestart = () => {
     if (isLocal) {
       setBoard(getInitialBoard(gameType));
-      setTurn("X");
+      setTurn(gameType === 'checkers' ? 'b' : "X");
       setResult(null);
-      setGameMessage("Player X's Turn");
+      setMustMoveIndex(null);
+      setGameMessage(gameType === 'checkers' ? "Player b's Turn" : "Player X's Turn");
     } else {
       socket.emit("restartGame", roomCode);
     }
@@ -395,11 +424,11 @@ function Game() {
 
   return (
     <div className="game-container">
-      <h2>{gameType === 'connect4' ? 'Connect 4' : gameType === 'othello' ? 'Othello' : 'Tic Tac Toe'}</h2>
+      <h2>{gameType === 'connect4' ? 'Connect 4' : gameType === 'othello' ? 'Othello' : gameType === 'checkers' ? 'Checkers' : 'Tic Tac Toe'}</h2>
       {isSpectator && <div className="spectator-badge">👁 Spectating</div>}
-      {!isLocal && !isSpectator && myName && <div className="player-names">Playing as {myName} ({myRole})</div>}
+      {!isLocal && !isSpectator && myName && <div className="player-names">Playing as {myName} ({myRole === 'b' ? 'Black' : myRole === 'r' ? 'Red' : myRole})</div>}
       {isSpectator && playerNames.length >= 2 && (
-        <div className="player-names">{playerNames[0]} (X) vs {playerNames[1]} (O)</div>
+        <div className="player-names">{playerNames[0]} ({gameType === 'checkers' ? 'Black' : 'X'}) vs {playerNames[1]} ({gameType === 'checkers' ? 'Red' : 'O'})</div>
       )}
 
       {/* F6: Series Progress */}
@@ -417,6 +446,8 @@ function Game() {
       <div id="scoreboard">
         {gameType === 'othello' ? (
           `Black (X): ${board.filter(c => c === 'X').length} | White (O): ${board.filter(c => c === 'O').length}`
+        ) : gameType === 'checkers' ? (
+          `Black: ${board.filter(c => c && c.toLowerCase() === 'b').length} | Red: ${board.filter(c => c && c.toLowerCase() === 'r').length}`
         ) : (
           `X: ${score.X} | O: ${score.O}`
         )}
@@ -433,6 +464,8 @@ function Game() {
         <Connect4Board board={board} onColumnClick={handleCellClick} winningLine={result?.line} turn={turn} />
       ) : gameType === 'othello' ? (
         <OthelloBoard board={board} onCellClick={handleCellClick} turn={turn} />
+      ) : gameType === 'checkers' ? (
+        <CheckersBoard board={board} onMove={handleCheckersMove} turn={turn} myRole={myRole} isLocal={isLocal} />
       ) : (
         <Board board={board} onCellClick={handleCellClick} winningLine={result?.line} />
       )}
