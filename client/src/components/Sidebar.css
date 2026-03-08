@@ -71,10 +71,7 @@
 .sidebar-content h2 {
     font-size: 1.8rem;
     margin-bottom: 5px;
-    background: var(--gradient-bg);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: var(--accent);
 }
 
 .sidebar-content p {
@@ -90,19 +87,20 @@
 }
 
 .primary-btn {
-    background: var(--gradient-primary);
+    background: var(--accent);
     border: none;
     padding: 12px;
-    color: white;
+    color: var(--bg-primary);
     border-radius: 8px;
     cursor: pointer;
     font-weight: bold;
     font-size: 1rem;
-    transition: transform 0.2s;
+    transition: transform 0.2s, background 0.3s;
 }
 
 .primary-btn:hover {
     transform: scale(1.02);
+    background: var(--accent-hover);
 }
 
 .secondary-btn {
