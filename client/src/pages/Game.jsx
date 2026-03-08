@@ -147,6 +147,7 @@ function Game() {
       socket.off("playerReconnected");
       socket.off("receiveMessage", handleNewGameChat);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomCode, location.state, navigate]);
 
   // F4: Local mode timer
