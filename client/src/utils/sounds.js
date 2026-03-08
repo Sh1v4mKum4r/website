@@ -25,7 +25,7 @@ const playTone = (frequency, duration, type = 'sine', volume = 0.3) => {
         gain.connect(ctx.destination);
         osc.start(ctx.currentTime);
         osc.stop(ctx.currentTime + duration);
-    } catch (e) {
+    } catch {
         // Silently fail if audio context not available
     }
 };

@@ -166,7 +166,7 @@
 
 .sidebar-form input:focus {
     outline: none;
-    border-color: #3333ff;
+    border-color: var(--accent);
 }
 
 .error-text {
@@ -230,8 +230,8 @@
 }
 
 .small-btn {
-    background: rgba(51, 51, 255, 0.2);
-    border: 1px solid #3333ff;
+    background: rgba(0, 242, 255, 0.2);
+    border: 1px solid var(--accent);
     color: var(--text-primary);
     padding: 4px 10px;
     border-radius: 12px;
@@ -240,7 +240,8 @@
 }
 
 .small-btn:hover {
-    background: #3333ff;
+    background: var(--accent);
+    color: var(--bg-primary);
 }
 
 .list-container {
@@ -284,8 +285,8 @@
 
 .join-btn {
     background: transparent;
-    border: 1px solid #3333ff;
-    color: #3333ff;
+    border: 1px solid var(--accent);
+    color: var(--accent);
     padding: 4px 12px;
     border-radius: 4px;
     cursor: pointer;
@@ -293,8 +294,8 @@
 }
 
 .join-btn:hover:not(:disabled) {
-    background: #3333ff;
-    color: white;
+    background: var(--accent);
+    color: var(--bg-primary);
 }
 
 .join-btn:disabled {
@@ -304,8 +305,8 @@
 
 .watch-btn {
     background: transparent;
-    border: 1px solid #8b5cf6;
-    color: #8b5cf6;
+    border: 1px solid var(--accent-secondary);
+    color: var(--accent-secondary);
     padding: 4px 12px;
     border-radius: 4px;
     cursor: pointer;
@@ -313,13 +314,13 @@
 }
 
 .watch-btn:hover {
-    background: #8b5cf6;
+    background: var(--accent-secondary);
     color: white;
 }
 
 .spectator-count {
     font-size: 0.75rem;
-    color: #8b5cf6;
+    color: var(--accent-secondary);
     margin-left: 4px;
 }
 
