@@ -3,7 +3,7 @@
     grid-template-columns: repeat(8, 1fr);
     grid-template-rows: repeat(8, 1fr);
     gap: 2px;
-    background-color: var(--board-border);
+    background-color: var(--accent);
     width: 100%;
     max-width: 800px;
     aspect-ratio: 1 / 1;
@@ -11,7 +11,7 @@
 }
 
 .othello-cell {
-    background-color: #117733; /* Classic Othello green */
+    background-color: var(--bg-secondary);
     width: 100%;
     height: 100%;
     display: flex;
@@ -21,11 +21,11 @@
 }
 
 .turn-o .othello-cell:not(:has(.othello-disc)):hover {
-    background-color: #1a8a40;
+    background-color: rgba(0, 242, 255, 0.2);
 }
 
 .turn-x .othello-cell:not(:has(.othello-disc)):hover {
-    background-color: #0b5c25;
+    background-color: rgba(255, 0, 204, 0.2);
 }
 
 .othello-disc {
@@ -37,11 +37,15 @@
 }
 
 .othello-disc.black {
-    background: radial-gradient(circle at 30% 30%, #444, #000);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--accent-secondary);
+    box-shadow: 0 0 10px var(--accent-secondary);
 }
 
 .othello-disc.white {
-    background: radial-gradient(circle at 30% 30%, #fff, #ddd 60%, #999);
+    background: var(--bg-primary);
+    border: 1px solid var(--accent);
+    box-shadow: 0 0 10px var(--accent);
 }
 
 @keyframes drop-in {

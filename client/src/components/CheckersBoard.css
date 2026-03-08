@@ -6,7 +6,7 @@
     max-width: 600px;
     aspect-ratio: 1 / 1;
     margin: 20px auto;
-    border: 4px solid #3d2b1f; /* Dark wood border */
+    border: 4px solid var(--accent);
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 
@@ -20,11 +20,11 @@
 }
 
 .checkers-cell.light {
-    background-color: #e5c29f; /* Light wood */
+    background-color: var(--bg-primary); /* Dark theme primary background */
 }
 
 .checkers-cell.dark {
-    background-color: #7b4329; /* Dark wood */
+    background-color: var(--bg-secondary); /* Dark theme secondary background */
 }
 
 .checkers-cell.selected::after {
@@ -34,8 +34,8 @@
     left: 0;
     right: 0;
     bottom: 0;
-    border: 3px solid #00f2ff;
-    box-shadow: inset 0 0 10px #00f2ff;
+    border: 3px solid var(--accent);
+    box-shadow: inset 0 0 10px var(--accent);
     pointer-events: none;
     z-index: 10;
 }
@@ -57,22 +57,22 @@
 }
 
 .checkers-piece.red {
-    background: radial-gradient(circle at 30% 30%, #ff4b4b, #aa0000);
-    border: 2px solid #660000;
+    background: var(--gradient-primary);
+    border: 2px solid var(--accent-secondary);
 }
 
 .checkers-piece.black {
-    background: radial-gradient(circle at 30% 30%, #555, #111);
-    border: 2px solid #000;
+    background: var(--bg-tertiary);
+    border: 2px solid var(--accent);
 }
 
 .checkers-piece.king {
-    border: 3px solid gold;
-    box-shadow: 0 0 10px gold, 0 4px 6px rgba(0,0,0,0.6), inset 0 2px 4px rgba(255,255,255,0.2);
+    border: 3px solid var(--win-color);
+    box-shadow: 0 0 10px var(--win-color), 0 4px 6px rgba(0,0,0,0.6), inset 0 2px 4px rgba(255,255,255,0.2);
 }
 
 .crown {
-    color: gold;
+    color: var(--win-color);
     font-size: 2vw; /* Responsive based on viewport, fallback later */
     text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
     pointer-events: none;
