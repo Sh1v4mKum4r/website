@@ -85,13 +85,6 @@ function Sidebar({ isOpen, onClose }) {
     });
   };
 
-  const handleCreateRoom = () => {
-    socket.emit('createRoom', ({ code, role, error }) => {
-      if (error) return addToast(error, 'error');
-      onClose();
-      navigate(`/game/tic-tac-toe/${code}`, { state: { role, lobbyCode: myLobbyCode, playerName: name } });
-    });
-  };
 
   const handleJoinRoom = (roomCode, gameType) => {
     socket.emit('joinRoom', roomCode, ({ code, role, gameData, error }) => {
