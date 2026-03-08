@@ -4,11 +4,8 @@
     grid-template-rows: repeat(8, 1fr);
     gap: 2px;
     background-color: var(--board-border);
-    padding: 5px;
-    border-radius: 8px;
-    box-shadow: 0 10px 30px var(--shadow-color);
     width: 100%;
-    max-width: 450px;
+    max-width: 600px;
     aspect-ratio: 1 / 1;
     margin: 20px auto;
 }
