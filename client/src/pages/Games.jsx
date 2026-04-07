@@ -14,6 +14,9 @@ const GAMES = [
     { id: 'mancala', name: 'Mancala', desc: 'Capture stones and fill your store!', route: 'mancala', modes: ['pnp', '2p'] },
     { id: 'dotsboxes', name: 'Dots & Boxes', desc: 'Draw lines and claim boxes!', route: 'dots-and-boxes', modes: ['pnp', '2p'] },
     { id: 'nim', name: 'Nim', desc: "Remove stones — but don't take the last one!", route: 'nim', modes: ['pnp', '2p'] },
+    { id: 'uttt', name: 'Ultimate Tic Tac Toe', desc: "Tic Tac Toe... inception style!", route: 'ultimate-tic-tac-toe', modes: ['pnp', '2p'] },
+    { id: 'chain', name: 'Chain Reaction', desc: 'Place atoms, cause explosions, dominate the grid!', route: 'chain-reaction', modes: ['pnp', '2p', 'mp'] },
+    { id: 'memory', name: 'Memory', desc: 'Flip cards and find matching pairs!', route: 'memory', modes: ['pnp', '2p', 'mp'] },
 ];
 
 const CATEGORIES = [
@@ -98,27 +101,19 @@ function Games() {
 
             {/* Game cards */}
             <div className="game-list">
-                {activeCategory === 'mp' ? (
-                    <div className="coming-soon-card">
-                        <span className="coming-soon-icon">🚧</span>
-                        <h3>Coming Soon</h3>
-                        <p>Multiplayer games are on the way!</p>
+                {gamesForCategory.map(game => (
+                    <div
+                        key={game.id}
+                        className="game-selection-card"
+                        onClick={() => activeCategory === 'pnp' ? handlePassNPlay(game) : handleOnlineGame(game)}
+                    >
+                        <h3>{game.name}</h3>
+                        <p>{game.desc}</p>
+                        <span className="play-badge">
+                            {activeCategory === 'pnp' ? '▶ Play Now' : '🔗 Create Room'}
+                        </span>
                     </div>
-                ) : (
-                    gamesForCategory.map(game => (
-                        <div
-                            key={game.id}
-                            className="game-selection-card"
-                            onClick={() => activeCategory === 'pnp' ? handlePassNPlay(game) : handleOnlineGame(game)}
-                        >
-                            <h3>{game.name}</h3>
-                            <p>{game.desc}</p>
-                            <span className="play-badge">
-                                {activeCategory === 'pnp' ? '▶ Play Now' : '🔗 Create Room'}
-                            </span>
-                        </div>
-                    ))
-                )}
+                ))}
             </div>
         </div>
     );
