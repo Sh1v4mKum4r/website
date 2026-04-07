@@ -1,0 +1,250 @@
+/* Chain Reaction Board — 6x9 grid */
+
+.chain-board-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin: 20px auto;
+}
+
+.chain-turn-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    color: var(--text-secondary, #aaa);
+    font-weight: 500;
+}
+
+.chain-turn-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    box-shadow: 0 0 8px currentColor;
+}
+
+.chain-board {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    grid-template-rows: repeat(6, 1fr);
+    gap: 2px;
+    background-color: var(--accent, #7c3aed);
+    width: 100%;
+    max-width: 540px;
+    aspect-ratio: 9 / 6;
+    margin: 0 auto;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px var(--shadow-color, rgba(0, 0, 0, 0.5));
+    border: 3px solid var(--accent, #7c3aed);
+}
+
+.chain-cell {
+    background-color: var(--bg-secondary, #1e1e2e);
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: background-color 0.15s, transform 0.1s;
+    position: relative;
+}
+
+.chain-cell:hover {
+    background-color: var(--bg-tertiary, #2a2a3e);
+    z-index: 1;
+}
+
+.chain-cell.cell-disabled {
+    cursor: not-allowed;
+}
+
+.chain-cell.cell-disabled:hover {
+    background-color: var(--bg-secondary, #1e1e2e);
+}
+
+/* Owner tints */
+.chain-cell.owner-R { background-color: rgba(239, 68, 68, 0.12); }
+.chain-cell.owner-G { background-color: rgba(34, 197, 94, 0.12); }
+.chain-cell.owner-B { background-color: rgba(59, 130, 246, 0.12); }
+.chain-cell.owner-Y { background-color: rgba(234, 179, 8, 0.12); }
+.chain-cell.owner-P { background-color: rgba(168, 85, 247, 0.12); }
+.chain-cell.owner-C { background-color: rgba(6, 182, 212, 0.12); }
+
+.chain-cell.owner-R:hover { background-color: rgba(239, 68, 68, 0.22); }
+.chain-cell.owner-G:hover { background-color: rgba(34, 197, 94, 0.22); }
+.chain-cell.owner-B:hover { background-color: rgba(59, 130, 246, 0.22); }
+.chain-cell.owner-Y:hover { background-color: rgba(234, 179, 8, 0.22); }
+.chain-cell.owner-P:hover { background-color: rgba(168, 85, 247, 0.22); }
+.chain-cell.owner-C:hover { background-color: rgba(6, 182, 212, 0.22); }
+
+/* Atom container */
+.chain-atoms {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 2px;
+    width: 80%;
+    height: 80%;
+}
+
+/* Single atom dot */
+.chain-atom {
+    border-radius: 50%;
+    box-shadow: 0 0 6px currentColor;
+    animation: atom-appear 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Atom sizing based on count */
+.chain-atoms.atoms-1 .chain-atom {
+    width: 55%;
+    height: 55%;
+}
+
+.chain-atoms.atoms-2 .chain-atom {
+    width: 40%;
+    height: 40%;
+}
+
+.chain-atoms.atoms-3 .chain-atom {
+    width: 32%;
+    height: 32%;
+}
+
+.chain-atoms.atoms-many .chain-atom {
+    width: 28%;
+    height: 28%;
+}
+
+/* Player colors for atoms */
+.chain-atom.color-R { background-color: #ef4444; color: #ef4444; }
+.chain-atom.color-G { background-color: #22c55e; color: #22c55e; }
+.chain-atom.color-B { background-color: #3b82f6; color: #3b82f6; }
+.chain-atom.color-Y { background-color: #eab308; color: #eab308; }
+.chain-atom.color-P { background-color: #a855f7; color: #a855f7; }
+.chain-atom.color-C { background-color: #06b6d4; color: #06b6d4; }
+
+/* Turn indicator dot colors */
+.chain-turn-dot.color-R { background-color: #ef4444; color: #ef4444; }
+.chain-turn-dot.color-G { background-color: #22c55e; color: #22c55e; }
+.chain-turn-dot.color-B { background-color: #3b82f6; color: #3b82f6; }
+.chain-turn-dot.color-Y { background-color: #eab308; color: #eab308; }
+.chain-turn-dot.color-P { background-color: #a855f7; color: #a855f7; }
+.chain-turn-dot.color-C { background-color: #06b6d4; color: #06b6d4; }
+
+/* Pulse animation for cells near critical mass */
+.chain-cell.near-critical .chain-atom {
+    animation: atom-pulse 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes atom-appear {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes atom-pulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 6px currentColor;
+    }
+    100% {
+        transform: scale(1.2);
+        box-shadow: 0 0 14px currentColor, 0 0 24px currentColor;
+    }
+}
+
+/* Player scoreboard under the board */
+.chain-players {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.chain-player-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background-color: var(--bg-secondary, #1e1e2e);
+    border: 1px solid var(--border-color, #333);
+    font-size: 0.85rem;
+    color: var(--text-secondary, #aaa);
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.chain-player-badge.active {
+    opacity: 1;
+    border-color: var(--accent, #7c3aed);
+}
+
+.chain-player-badge.current-turn {
+    opacity: 1;
+    box-shadow: 0 0 8px var(--accent, #7c3aed);
+}
+
+.chain-player-color {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+/* Responsive — tablets */
+@media (max-width: 600px) {
+    .chain-board {
+        max-width: 400px;
+        gap: 1px;
+        border-width: 2px;
+    }
+
+    .chain-atoms.atoms-1 .chain-atom {
+        width: 50%;
+        height: 50%;
+    }
+
+    .chain-atoms.atoms-2 .chain-atom {
+        width: 36%;
+        height: 36%;
+    }
+
+    .chain-atoms.atoms-3 .chain-atom {
+        width: 28%;
+        height: 28%;
+    }
+
+    .chain-atoms.atoms-many .chain-atom {
+        width: 24%;
+        height: 24%;
+    }
+}
+
+/* Responsive — phones */
+@media (max-width: 400px) {
+    .chain-board {
+        max-width: 320px;
+    }
+
+    .chain-board-wrapper {
+        gap: 8px;
+    }
+
+    .chain-turn-indicator {
+        font-size: 0.85rem;
+    }
+
+    .chain-player-badge {
+        font-size: 0.75rem;
+        padding: 3px 8px;
+    }
+}
