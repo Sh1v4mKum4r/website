@@ -1,0 +1,142 @@
+.db-board {
+    display: grid;
+    grid-template-columns: 16px 1fr 16px 1fr 16px 1fr 16px;
+    grid-template-rows: 16px 1fr 16px 1fr 16px 1fr 16px;
+    width: 100%;
+    max-width: 420px;
+    aspect-ratio: 1 / 1;
+    margin: 20px auto;
+    gap: 0;
+    padding: 10px;
+    background-color: var(--bg-secondary);
+    border-radius: 10px;
+    box-shadow: 0 10px 20px var(--shadow-color);
+    border: 4px solid var(--accent);
+}
+
+/* Dots */
+.db-dot {
+    width: 16px;
+    height: 16px;
+    background: var(--accent);
+    border-radius: 50%;
+    z-index: 2;
+    box-shadow: 0 0 6px var(--accent);
+}
+
+/* Edges (shared) */
+.db-edge {
+    z-index: 1;
+    border-radius: 4px;
+    transition: background-color 0.2s, box-shadow 0.2s;
+}
+
+.db-edge.unclaimed {
+    cursor: pointer;
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Horizontal edge */
+.db-edge-h {
+    height: 8px;
+    align-self: center;
+}
+
+/* Vertical edge */
+.db-edge-v {
+    width: 8px;
+    justify-self: center;
+}
+
+/* Hover effects for unclaimed edges */
+.turn-x .db-edge.unclaimed:hover {
+    background-color: rgba(255, 0, 204, 0.4);
+    box-shadow: 0 0 8px rgba(255, 0, 204, 0.3);
+}
+
+.turn-o .db-edge.unclaimed:hover {
+    background-color: rgba(0, 242, 255, 0.4);
+    box-shadow: 0 0 8px rgba(0, 242, 255, 0.3);
+}
+
+/* Claimed edges */
+.db-edge.claimed-x {
+    background: var(--gradient-primary);
+    box-shadow: 0 0 6px var(--accent-secondary);
+}
+
+.db-edge.claimed-o {
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent);
+}
+
+/* Boxes */
+.db-box {
+    border-radius: 2px;
+    transition: background-color 0.3s;
+}
+
+.db-box.filled-x {
+    background-color: rgba(255, 0, 204, 0.2);
+    animation: boxFill 0.4s ease-out;
+}
+
+.db-box.filled-o {
+    background-color: rgba(0, 242, 255, 0.2);
+    animation: boxFill 0.4s ease-out;
+}
+
+@keyframes boxFill {
+    0% {
+        background-color: transparent;
+        transform: scale(0.8);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .db-board {
+        grid-template-columns: 12px 1fr 12px 1fr 12px 1fr 12px;
+        grid-template-rows: 12px 1fr 12px 1fr 12px 1fr 12px;
+        padding: 6px;
+        max-width: 320px;
+    }
+
+    .db-dot {
+        width: 12px;
+        height: 12px;
+    }
+
+    .db-edge-h {
+        height: 6px;
+    }
+
+    .db-edge-v {
+        width: 6px;
+    }
+}
+
+@media (max-width: 400px) {
+    .db-board {
+        grid-template-columns: 10px 1fr 10px 1fr 10px 1fr 10px;
+        grid-template-rows: 10px 1fr 10px 1fr 10px 1fr 10px;
+        padding: 4px;
+        max-width: 260px;
+    }
+
+    .db-dot {
+        width: 10px;
+        height: 10px;
+    }
+
+    .db-edge-h {
+        height: 5px;
+    }
+
+    .db-edge-v {
+        width: 5px;
+    }
+}

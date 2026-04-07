@@ -1,0 +1,958 @@
+===PLAN_JSON:plan.json===
+{
+  "project": {
+    "language": "javascript",
+    "framework": "react+express",
+    "test_runner": null,
+    "lint_command": "cd client && npx eslint src/",
+    "build_command": "cd client && npm run build"
+  },
+  "shared_files": [],
+  "contracts": [
+    {
+      "name": "gomoku-interface",
+      "file": "contracts/gomoku-interface.js",
+      "format": "code",
+      "producers": ["task-gomoku"],
+      "consumers": ["task-integration"]
+    },
+    {
+      "name": "mancala-interface",
+      "file": "contracts/mancala-interface.js",
+      "format": "code",
+      "producers": ["task-mancala"],
+      "consumers": ["task-integration"]
+    },
+    {
+      "name": "dotsboxes-interface",
+      "file": "contracts/dotsboxes-interface.js",
+      "format": "code",
+      "producers": ["task-dotsboxes"],
+      "consumers": ["task-integration"]
+    },
+    {
+      "name": "nim-interface",
+      "file": "contracts/nim-interface.js",
+      "format": "code",
+      "producers": ["task-nim"],
+      "consumers": ["task-integration"]
+    },
+    {
+      "name": "integration-spec",
+      "file": "contracts/integration-spec.md",
+      "format": "code",
+      "producers": [],
+      "consumers": ["task-integration"]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "task-gomoku",
+      "name": "Gomoku (Five in a Row) game",
+      "files_owned": [
+        "server/utils/gomokuLogic.js",
+        "client/src/utils/gomokuLogic.js",
+        "client/src/components/GomokuBoard.jsx",
+        "client/src/components/GomokuBoard.css"
+      ],
+      "depends_on": [],
+      "wave": 1,
+      "acceptance": "1. server/utils/gomokuLogic.js exports makeGomokuMove and checkGomokuWinner as CommonJS. 2. client/src/utils/gomokuLogic.js exports same functions as ES modules. 3. GomokuBoard.jsx renders a 15x15 clickable grid with X/O pieces. 4. GomokuBoard.css styles the board responsively. 5. makeGomokuMove correctly validates moves and detects 5-in-a-row wins and draws. 6. All files committed."
+    },
+    {
+      "id": "task-mancala",
+      "name": "Mancala game",
+      "files_owned": [
+        "server/utils/mancalaLogic.js",
+        "client/src/utils/mancalaLogic.js",
+        "client/src/components/MancalaBoard.jsx",
+        "client/src/components/MancalaBoard.css"
+      ],
+      "depends_on": [],
+      "wave": 1,
+      "acceptance": "1. server/utils/mancalaLogic.js exports getInitialMancalaBoard, makeMancalaMove, checkMancalaWinner as CommonJS. 2. client/src/utils/mancalaLogic.js exports same as ES modules. 3. MancalaBoard.jsx renders 2 rows of 6 pits plus 2 stores with stone counts. 4. MancalaBoard.css styles the board. 5. Stone distribution, capture, extra-turn, and game-over logic all work correctly. 6. All files committed."
+    },
+    {
+      "id": "task-dotsboxes",
+      "name": "Dots and Boxes game",
+      "files_owned": [
+        "server/utils/dotsboxesLogic.js",
+        "client/src/utils/dotsboxesLogic.js",
+        "client/src/components/DotsBoxesBoard.jsx",
+        "client/src/components/DotsBoxesBoard.css"
+      ],
+      "depends_on": [],
+      "wave": 1,
+      "acceptance": "1. server/utils/dotsboxesLogic.js exports getInitialDotsBoxesBoard, makeDotsBoxesMove, checkDotsBoxesWinner as CommonJS. 2. client/src/utils/dotsboxesLogic.js exports same as ES modules. 3. DotsBoxesBoard.jsx renders a 4x4 dot grid with clickable edges and colored completed boxes. 4. DotsBoxesBoard.css styles the board. 5. Edge claiming, box completion (with extra turn), and winner detection all work. 6. All files committed."
+    },
+    {
+      "id": "task-nim",
+      "name": "Nim stone removal game",
+      "files_owned": [
+        "server/utils/nimLogic.js",
+        "client/src/utils/nimLogic.js",
+        "client/src/components/NimBoard.jsx",
+        "client/src/components/NimBoard.css"
+      ],
+      "depends_on": [],
+      "wave": 1,
+      "acceptance": "1. server/utils/nimLogic.js exports getInitialNimBoard, makeNimMove, checkNimWinner as CommonJS. 2. client/src/utils/nimLogic.js exports same as ES modules. 3. NimBoard.jsx renders 3 rows of stones (3, 5, 7) with click-to-remove interaction. 4. NimBoard.css styles the board. 5. Stone removal, turn switching, and misere win condition (last stone taker loses) all work. 6. All files committed."
+    },
+    {
+      "id": "task-integration",
+      "name": "Integrate all 4 new games into shared files",
+      "files_owned": [
+        "server/server.js",
+        "client/src/pages/Game.jsx",
+        "client/src/pages/Games.jsx",
+        "client/src/components/Sidebar.jsx"
+      ],
+      "depends_on": ["task-gomoku", "task-mancala", "task-dotsboxes", "task-nim"],
+      "wave": 2,
+      "acceptance": "1. All 4 new games appear in Games.jsx GAMES array with pnp and 2p modes. 2. Game.jsx renders all 4 new board components, handles local play logic, and sends online moves. 3. server.js imports all new game logic, initializes boards in createRoom, handles moves in makeMove, and resets boards in restartGame/rematch. 4. Sidebar.jsx gameRouteMap and gameNameMap include all 4 new games. 5. Scoreboard displays appropriate info for each game type. 6. Game title displays correctly for each game. 7. All files committed."
+    }
+  ],
+  "waves": [
+    {"wave": 1, "tasks": ["task-gomoku", "task-mancala", "task-dotsboxes", "task-nim"]},
+    {"wave": 2, "tasks": ["task-integration"]}
+  ]
+}
+
+===CONTRACT:contracts/gomoku-interface.js===
+// Gomoku (Five in a Row) — Interface Contract
+// Board: Array(225).fill(null) — 15x15 grid
+// Cells: null (empty), 'X', or 'O'
+// Players: X goes first, then O alternates
+
+// Server (CommonJS): server/utils/gomokuLogic.js
+// module.exports = { makeGomokuMove, checkGomokuWinner }
+
+// Client (ES module): client/src/utils/gomokuLogic.js
+// export { makeGomokuMove, checkGomokuWinner }
+
+// makeGomokuMove(board, index, turn)
+//   - board: Array(225), index: 0-224, turn: 'X'|'O'
+//   - Returns: { valid: false } if cell occupied or out of bounds
+//   - Returns: { valid: true, board: newBoard, result: null|{winner,line} }
+//   - result.winner: 'X', 'O', or 'draw'
+//   - result.line: array of 5 winning indices, or null for draw
+
+// checkGomokuWinner(board)
+//   - Returns: { winner, line } or null
+//   - Checks horizontal, vertical, both diagonals for 5 in a row
+
+===CONTRACT:contracts/mancala-interface.js===
+// Mancala — Interface Contract
+// Board: Array(14) — indices 0-5: Player X pits, 6: Player X store,
+//                      indices 7-12: Player O pits, 13: Player O store
+// Initial: 4 stones per pit (indices 0-5, 7-12), 0 in stores (6, 13)
+// Players: X (pits 0-5, store 6), O (pits 7-12, store 13)
+
+// Server (CommonJS): server/utils/mancalaLogic.js
+// module.exports = { getInitialMancalaBoard, makeMancalaMove, checkMancalaWinner }
+
+// Client (ES module): client/src/utils/mancalaLogic.js
+// export { getInitialMancalaBoard, makeMancalaMove, checkMancalaWinner }
+
+// getInitialMancalaBoard()
+//   - Returns: [4,4,4,4,4,4, 0, 4,4,4,4,4,4, 0]
+
+// makeMancalaMove(board, pitIndex, turn)
+//   - board: Array(14), pitIndex: 0-5 if turn='X', 7-12 if turn='O'
+//   - Returns: { valid: false } if pit empty or not player's pit
+//   - Returns: { valid: true, board: newBoard, result: null|{winner,line:null}, nextTurn: 'X'|'O' }
+//   - Rules:
+//     1. Pick up all stones from selected pit
+//     2. Distribute one stone per pit counterclockwise, SKIPPING opponent's store
+//     3. If last stone lands in own store: nextTurn = same player (extra turn)
+//     4. If last stone lands in empty own pit AND opposite pit has stones: capture both into own store
+//     5. Game ends when one side's pits are all empty. Remaining stones go to that side's store.
+//   - nextTurn: 'X' or 'O' (same player if landed in own store)
+
+// checkMancalaWinner(board)
+//   - Returns: { winner, line: null } or null
+//   - Checks if either side's pits are all empty
+//   - Winner is player with more stones in store (or 'draw')
+
+===CONTRACT:contracts/dotsboxes-interface.js===
+// Dots and Boxes — Interface Contract
+// Board: Array(33) — 4x4 dot grid (3x3 boxes)
+//   indices 0-11: horizontal edges (4 rows x 3 edges)
+//     edge at dot-row r, between dot-cols c and c+1: index = r * 3 + c
+//   indices 12-23: vertical edges (3 rows x 4 edges)
+//     edge between dot-rows r and r+1, at dot-col c: index = 12 + r * 4 + c
+//   indices 24-32: boxes (3x3)
+//     box at (r, c): index = 24 + r * 3 + c
+// Cells: null (unclaimed) or 'X'/'O' (who placed edge / completed box)
+// Players: X goes first
+
+// Server (CommonJS): server/utils/dotsboxesLogic.js
+// module.exports = { getInitialDotsBoxesBoard, makeDotsBoxesMove, checkDotsBoxesWinner }
+
+// Client (ES module): client/src/utils/dotsboxesLogic.js
+// export { getInitialDotsBoxesBoard, makeDotsBoxesMove, checkDotsBoxesWinner }
+
+// getInitialDotsBoxesBoard()
+//   - Returns: Array(33).fill(null)
+
+// makeDotsBoxesMove(board, edgeIndex, turn)
+//   - board: Array(33), edgeIndex: 0-23, turn: 'X'|'O'
+//   - Returns: { valid: false } if edge already claimed or index out of range
+//   - Returns: { valid: true, board: newBoard, result: null|{winner,line:null}, nextTurn: 'X'|'O' }
+//   - After placing edge, check if any adjacent box(es) are now complete (all 4 edges filled)
+//   - If box completed: mark box with turn's mark, player gets ANOTHER TURN (nextTurn = turn)
+//   - If no box completed: nextTurn = opponent
+//   - Game over when all 24 edges are filled
+
+// Box (r,c) edges: top=r*3+c, bottom=(r+1)*3+c, left=12+r*4+c, right=12+r*4+(c+1)
+
+// checkDotsBoxesWinner(board)
+//   - Count boxes owned by X and O (indices 24-32)
+//   - If all 9 boxes filled: winner is player with more boxes (or 'draw')
+//   - Returns: { winner, line: null } or null
+
+===CONTRACT:contracts/nim-interface.js===
+// Nim — Interface Contract
+// Board: Array(15) — 3 rows: row0=[0..2](3 stones), row1=[3..7](5 stones), row2=[8..14](7 stones)
+// Cells: 'stone' (present) or null (removed)
+// Players: X goes first, O second
+// Misère variant: player who takes the LAST stone LOSES
+
+// Server (CommonJS): server/utils/nimLogic.js
+// module.exports = { getInitialNimBoard, makeNimMove, checkNimWinner }
+
+// Client (ES module): client/src/utils/nimLogic.js
+// export { getInitialNimBoard, makeNimMove, checkNimWinner }
+
+// getInitialNimBoard()
+//   - Returns: Array(15).fill('stone')
+
+// makeNimMove(board, index, turn)
+//   - board: Array(15), index: 0-14, turn: 'X'|'O'
+//   - Player clicks a stone. ALL stones at that index and to its right in the same row are removed.
+//   - Row boundaries: row0=[0,3), row1=[3,8), row2=[8,15)
+//   - Returns: { valid: false } if stone at index is null
+//   - Returns: { valid: true, board: newBoard, result: null|{winner,line:null}, nextTurn: 'X'|'O' }
+//   - After removal, if ALL 15 stones gone: current player LOSES (misère)
+//     result = { winner: opponent, line: null }
+//   - nextTurn = opponent
+
+// checkNimWinner(board)
+//   - If all stones null: the player who just moved loses (caller must know who)
+//   - Returns null (not used independently — winner determined in makeNimMove)
+
+===CONTRACT:contracts/integration-spec.md===
+# Integration Specification
+
+## Games to Register
+
+| Game | id | route | name | desc | modes |
+|------|----|-------|------|------|-------|
+| Gomoku | gomoku | gomoku | Gomoku | Get five in a row on a 15x15 board! | pnp, 2p |
+| Mancala | mancala | mancala | Mancala | Capture stones and fill your store! | pnp, 2p |
+| Dots & Boxes | dotsboxes | dots-and-boxes | Dots & Boxes | Draw lines and claim boxes! | pnp, 2p |
+| Nim | nim | nim | Nim | Remove stones — but don't take the last one! | pnp, 2p |
+
+## Files to Modify
+
+### 1. client/src/pages/Games.jsx
+Add all 4 games to the GAMES array.
+
+### 2. client/src/components/Sidebar.jsx
+Add to gameRouteMap: { gomoku: 'gomoku', mancala: 'mancala', dotsboxes: 'dots-and-boxes', nim: 'nim' }
+Add to gameNameMap: { gomoku: 'Gomoku', mancala: 'Mancala', dotsboxes: 'Dots & Boxes', nim: 'Nim' }
+
+### 3. client/src/pages/Game.jsx
+- Import board components: GomokuBoard, MancalaBoard, DotsBoxesBoard, NimBoard
+- Import client logic: gomokuLogic, mancalaLogic, dotsboxesLogic, nimLogic
+- In getInitialBoard: add cases for gomoku (Array(225).fill(null)), mancala (getInitialMancalaBoard()), dotsboxes (Array(33).fill(null)), nim (getInitialNimBoard())
+- In board rendering JSX: add gameType conditionals to render appropriate board component
+- In handleCellClick local mode: add cases for each game calling its logic function
+- In game title h2: add display names
+- In scoreboard: add display for mancala (store counts), dotsboxes (box counts), others use default X/O score
+- Turn initialization: all new games use 'X' as first turn
+
+### 4. server/server.js
+- Import server logic modules
+- In createRoom: add board initialization for each gameType
+- In makeMove: add gameType branches calling appropriate move function
+- In restartGame: add board reset for each gameType
+- In rematch requestRematch: add board reset for each gameType
+- Board sizes: gomoku=225, mancala=14, dotsboxes=33, nim=15
+- Timer timeout winner logic: all new games use standard X/O (not b/r)
+
+===TASK:task-gomoku===
+## Your Role
+You are implementing the Gomoku (Five in a Row) game for a React + Express multiplayer gaming platform.
+
+## Project Conventions
+- camelCase for functions/variables, PascalCase for components
+- Server files use CommonJS (module.exports), client files use ES modules (export)
+- Game logic modules export: make{Game}Move(board, index, turn) → { valid, board, result, nextTurn? }
+- Board state is a flat array. null = empty cell.
+- Move functions return { valid: false } for invalid moves, { valid: true, board, result } for valid moves
+- result is { winner: 'X'|'O'|'draw', line: array|null } or null if game continues
+- Board components receive: board, onCellClick, turn, and optionally winningLine
+- CSS follows existing patterns: CSS Grid for boards, theme variables (var(--accent), var(--bg-secondary), etc.)
+
+## Style Examples (from this project)
+
+Server game logic (see server/utils/gameLogic.js for TicTacToe pattern):
+```javascript
+const makeTicTacToeMove = (board, index, turn) => {
+    if (board[index] !== null) return { valid: false };
+    const newBoard = [...board];
+    newBoard[index] = turn;
+    const result = checkTicTacToeWinner(newBoard);
+    return { valid: true, board: newBoard, result };
+};
+```
+
+Client board component (see client/src/components/Board.jsx):
+```jsx
+function Board({ board, onCellClick, winningLine }) {
+  return (
+    <div className="board">
+      {board.map((value, index) => (
+        <Cell key={index} value={value} onClick={() => onCellClick(index)} isWinning={winningLine?.includes(index)} />
+      ))}
+    </div>
+  );
+}
+```
+
+## Your Specific Task
+Implement Gomoku (Five in a Row) — a game played on a 15x15 grid where players alternate placing X and O. The first player to get exactly 5 in a row (horizontally, vertically, or diagonally) wins. If the board fills up with no winner, it's a draw.
+
+### Board Representation
+- Flat array of 225 elements (15 rows × 15 columns)
+- Index = row * 15 + col
+- null = empty, 'X' = player X's stone, 'O' = player O's stone
+
+### Win Detection
+Check all horizontal, vertical, and both diagonal directions for exactly 5 consecutive same-color stones. Return the 5 winning indices as the `line` array.
+
+### Files to Create
+
+1. **server/utils/gomokuLogic.js** (CommonJS)
+   - `checkGomokuWinner(board)` — scan entire board for 5-in-a-row. Return { winner, line } or null.
+   - `makeGomokuMove(board, index, turn)` — validate move, place stone, check winner.
+   - `module.exports = { makeGomokuMove, checkGomokuWinner }`
+
+2. **client/src/utils/gomokuLogic.js** (ES module)
+   - Same logic as server, but using `export` instead of `module.exports`.
+
+3. **client/src/components/GomokuBoard.jsx**
+   - Render a 15x15 CSS Grid
+   - Each cell shows X (dark stone) or O (light stone) or empty
+   - Highlight winning line cells
+   - Props: `{ board, onCellClick, winningLine, turn }`
+   - Import and use GomokuBoard.css
+
+4. **client/src/components/GomokuBoard.css**
+   - 15x15 CSS Grid layout
+   - Cell size appropriate for the board (small cells, ~28-32px)
+   - Stone styles (circular, colored)
+   - Hover effect on empty cells showing current player's color (semi-transparent)
+   - Winning cell highlight (glow/pulse animation)
+   - Read existing board CSS files (Board.css, OthelloBoard.css) for style conventions:
+     use var(--bg-secondary), var(--border-color), var(--accent) etc.
+   - Make it responsive (smaller cells on mobile)
+
+## Files You Own (DO NOT touch anything else)
+- server/utils/gomokuLogic.js
+- client/src/utils/gomokuLogic.js
+- client/src/components/GomokuBoard.jsx
+- client/src/components/GomokuBoard.css
+
+## Acceptance Criteria
+1. server/utils/gomokuLogic.js exports makeGomokuMove and checkGomokuWinner as CommonJS
+2. client/src/utils/gomokuLogic.js exports same functions as ES modules
+3. GomokuBoard.jsx renders a 15x15 clickable grid with X/O stones and winning line highlight
+4. GomokuBoard.css styles the board responsively with theme-consistent colors
+5. makeGomokuMove: returns { valid: false } for occupied cells; returns { valid: true, board, result } for valid moves
+6. checkGomokuWinner: correctly detects horizontal, vertical, and diagonal 5-in-a-row; detects draws
+7. All files committed with descriptive messages
+
+## PROGRESS.md
+Maintain a PROGRESS.md file in your working directory. Update it each iteration.
+
+## When Done
+When ALL acceptance criteria are met, output:
+<promise>TASK_task-gomoku_COMPLETE</promise>
+
+===TASK:task-mancala===
+## Your Role
+You are implementing the Mancala game for a React + Express multiplayer gaming platform.
+
+## Project Conventions
+- camelCase for functions/variables, PascalCase for components
+- Server files use CommonJS (module.exports), client files use ES modules (export)
+- Game logic modules export: make{Game}Move(board, index, turn) → { valid, board, result, nextTurn }
+- Board state is a flat array. Move functions return { valid: false } for invalid, { valid: true, board, result, nextTurn } for valid.
+- result is { winner, line: null } or null. nextTurn is 'X' or 'O'.
+- CSS follows existing patterns: theme variables, responsive design.
+
+## Style Examples (from this project)
+```javascript
+// Othello move pattern (closest to Mancala — complex board transformation):
+const makeOthelloMove = (board, index, turn) => {
+    const flips = getOthelloFlips(board, index, turn);
+    if (flips.length === 0) return { valid: false };
+    const newBoard = [...board];
+    newBoard[index] = turn;
+    for (const flipIdx of flips) { newBoard[flipIdx] = turn; }
+    let nextTurn = turn === 'X' ? 'O' : 'X';
+    let result = checkOthelloWinner(newBoard);
+    if (!result && !checkHasValidOthelloMoves(newBoard, nextTurn)) { nextTurn = turn; }
+    return { valid: true, board: newBoard, result, nextTurn };
+};
+```
+
+## Your Specific Task
+Implement Mancala — a classic pit-and-stones game for 2 players.
+
+### Board Representation
+Array(14):
+- Indices 0-5: Player X's pits (left to right from X's perspective)
+- Index 6: Player X's store (mancala)
+- Indices 7-12: Player O's pits (left to right from O's perspective)
+- Index 13: Player O's store (mancala)
+- Initial state: 4 stones in each pit, 0 in stores → [4,4,4,4,4,4, 0, 4,4,4,4,4,4, 0]
+
+### Game Rules
+1. **Sowing**: Player picks up all stones from one of their pits. Moving counterclockwise (increasing index, wrapping from 13→0), drop one stone per pit, SKIPPING the opponent's store.
+   - Player X skips index 13 (O's store)
+   - Player O skips index 6 (X's store)
+2. **Extra turn**: If the last stone lands in the player's own store, they get another turn.
+3. **Capture**: If the last stone lands in an empty pit ON THE PLAYER'S SIDE, and the opposite pit has stones, capture all stones from both pits into the player's store.
+   - Opposite pits: pit i ↔ pit (12 - i) for i in 0-5 and 7-12
+4. **Game over**: When ALL pits on one side are empty. Remaining stones on the other side go to that side's store. Player with more stones in their store wins.
+
+### Files to Create
+
+1. **server/utils/mancalaLogic.js** (CommonJS)
+   - `getInitialMancalaBoard()` → [4,4,4,4,4,4, 0, 4,4,4,4,4,4, 0]
+   - `makeMancalaMove(board, pitIndex, turn)` — validate (must be own pit, must have stones), sow, capture, check game over
+   - `checkMancalaWinner(board)` — check if either side empty, tally stores, return winner
+   - `module.exports = { getInitialMancalaBoard, makeMancalaMove, checkMancalaWinner }`
+
+2. **client/src/utils/mancalaLogic.js** (ES module)
+   - Same logic with ES module exports
+
+3. **client/src/components/MancalaBoard.jsx**
+   - Visual layout: Player O's pits on top row (right to left: indices 12,11,10,9,8,7), Player X's pits on bottom row (left to right: indices 0,1,2,3,4,5). Stores on sides (X's store index 6 on right, O's store index 13 on left).
+   - Each pit shows stone count number
+   - Clickable pits highlight on hover (only current player's pits)
+   - Props: `{ board, onCellClick, turn, myRole, isLocal }`
+   - Only allow clicking on current player's pits
+
+4. **client/src/components/MancalaBoard.css**
+   - Mancala-specific layout: horizontal board with stores on ends
+   - Pit styling (oval/circular, show stone count)
+   - Store styling (larger, elongated)
+   - Stone count display
+   - Hover effects on clickable pits
+   - Use theme variables from existing CSS
+   - Responsive design
+
+## Files You Own (DO NOT touch anything else)
+- server/utils/mancalaLogic.js
+- client/src/utils/mancalaLogic.js
+- client/src/components/MancalaBoard.jsx
+- client/src/components/MancalaBoard.css
+
+## Acceptance Criteria
+1. server/utils/mancalaLogic.js exports getInitialMancalaBoard, makeMancalaMove, checkMancalaWinner as CommonJS
+2. client/src/utils/mancalaLogic.js exports same as ES modules
+3. MancalaBoard.jsx renders the board with correct pit layout, stone counts, and stores
+4. Stone sowing correctly skips opponent's store
+5. Extra turn works when last stone lands in own store
+6. Capture works when last stone lands in empty own pit with stones opposite
+7. Game over detection works (one side empty → remaining stones collected)
+8. All files committed
+
+## PROGRESS.md
+Maintain a PROGRESS.md file in your working directory. Update it each iteration.
+
+## When Done
+When ALL acceptance criteria are met, output:
+<promise>TASK_task-mancala_COMPLETE</promise>
+
+===TASK:task-dotsboxes===
+## Your Role
+You are implementing the Dots and Boxes game for a React + Express multiplayer gaming platform.
+
+## Project Conventions
+- camelCase for functions/variables, PascalCase for components
+- Server: CommonJS, Client: ES modules
+- Move functions: return { valid, board, result, nextTurn }
+- result: { winner, line: null } or null
+- CSS: theme variables, responsive, CSS Grid
+
+## Style Examples
+```javascript
+const makeConnect4Move = (board, colIndex, turn) => {
+    if (colIndex < 0 || colIndex >= COLS) return { valid: false };
+    // ... find position, place piece, check winner
+    return { valid: true, board: newBoard, result };
+};
+```
+
+## Your Specific Task
+Implement Dots and Boxes — a game where players draw lines between dots to complete boxes.
+
+### Board Representation
+Array(33) for a 4×4 dot grid (3×3 boxes):
+- Indices 0-11: horizontal edges (4 rows × 3 per row)
+  - Edge between dots at row r, cols c and c+1: index = r * 3 + c (r=0..3, c=0..2)
+- Indices 12-23: vertical edges (3 rows × 4 per row)
+  - Edge between dots at rows r and r+1, col c: index = 12 + r * 4 + c (r=0..2, c=0..3)
+- Indices 24-32: boxes (3×3 grid)
+  - Box at row r, col c: index = 24 + r * 3 + c (r=0..2, c=0..2)
+- All cells start as null. Edges become 'X' or 'O' when claimed. Boxes become 'X' or 'O' when completed.
+
+### Box Edge Mapping
+Box at (r, c) has these 4 edges:
+- Top: r * 3 + c
+- Bottom: (r+1) * 3 + c
+- Left: 12 + r * 4 + c
+- Right: 12 + r * 4 + (c + 1)
+
+### Game Rules
+1. Player clicks on an unclaimed edge (index 0-23)
+2. Edge is marked with player's mark
+3. Check if placing this edge completed any adjacent box(es):
+   - Each edge borders at most 2 boxes. Check both.
+   - If a box now has all 4 edges filled, mark the box with the current player's mark
+4. If ANY box was completed: player gets ANOTHER TURN (nextTurn = current player)
+5. If no box completed: nextTurn = opponent
+6. Game over when all 24 edges are filled
+7. Winner: player who completed more boxes. Draw if tied.
+
+### Files to Create
+
+1. **server/utils/dotsboxesLogic.js** (CommonJS)
+   - `getInitialDotsBoxesBoard()` → Array(33).fill(null)
+   - `makeDotsBoxesMove(board, edgeIndex, turn)` — validate, place edge, check box completion, determine if extra turn
+   - `checkDotsBoxesWinner(board)` — count boxes per player, determine winner if all boxes filled
+   - `module.exports = { getInitialDotsBoxesBoard, makeDotsBoxesMove, checkDotsBoxesWinner }`
+
+2. **client/src/utils/dotsboxesLogic.js** (ES module)
+   - Same logic with ES exports
+
+3. **client/src/components/DotsBoxesBoard.jsx**
+   - Render a 4×4 grid of dots with edges between them
+   - Dots: small circles at grid intersections
+   - Horizontal edges: clickable horizontal bars between horizontally adjacent dots
+   - Vertical edges: clickable vertical bars between vertically adjacent dots
+   - Claimed edges show the player's color (e.g., blue for X, red for O)
+   - Completed boxes show a colored fill
+   - Props: `{ board, onCellClick, turn }` — onCellClick receives the edge index (0-23)
+   - Unclaimed edges highlight on hover
+
+4. **client/src/components/DotsBoxesBoard.css**
+   - CSS Grid or absolute positioning for dots/edges/boxes
+   - Dot styling (small circles)
+   - Edge styling (horizontal and vertical bars)
+   - Box fill colors
+   - Hover effects on unclaimed edges
+   - Theme variables, responsive
+
+## Files You Own (DO NOT touch anything else)
+- server/utils/dotsboxesLogic.js
+- client/src/utils/dotsboxesLogic.js
+- client/src/components/DotsBoxesBoard.jsx
+- client/src/components/DotsBoxesBoard.css
+
+## Acceptance Criteria
+1. server/utils/dotsboxesLogic.js exports getInitialDotsBoxesBoard, makeDotsBoxesMove, checkDotsBoxesWinner as CommonJS
+2. client/src/utils/dotsboxesLogic.js exports same as ES modules
+3. DotsBoxesBoard.jsx renders 4x4 dots with clickable edges and colored completed boxes
+4. Edge claiming works correctly (only unclaimed edges, index 0-23)
+5. Box completion detection works (checks all adjacent boxes when edge placed)
+6. Extra turn granted when box completed
+7. Game over and winner detection work when all edges filled
+8. All files committed
+
+## PROGRESS.md
+Maintain a PROGRESS.md file in your working directory. Update it each iteration.
+
+## When Done
+When ALL acceptance criteria are met, output:
+<promise>TASK_task-dotsboxes_COMPLETE</promise>
+
+===TASK:task-nim===
+## Your Role
+You are implementing the Nim stone removal game for a React + Express multiplayer gaming platform.
+
+## Project Conventions
+- camelCase for functions/variables, PascalCase for components
+- Server: CommonJS, Client: ES modules
+- Move functions: return { valid, board, result, nextTurn }
+- result: { winner, line: null } or null
+- CSS: theme variables, responsive
+
+## Style Examples
+```javascript
+const makeTicTacToeMove = (board, index, turn) => {
+    if (board[index] !== null) return { valid: false };
+    const newBoard = [...board];
+    newBoard[index] = turn;
+    const result = checkTicTacToeWinner(newBoard);
+    return { valid: true, board: newBoard, result };
+};
+```
+
+## Your Specific Task
+Implement Nim — a mathematical strategy game where players take turns removing stones.
+
+### Board Representation
+Array(15) — 3 rows of stones:
+- Row 0 (3 stones): indices 0, 1, 2
+- Row 1 (5 stones): indices 3, 4, 5, 6, 7
+- Row 2 (7 stones): indices 8, 9, 10, 11, 12, 13, 14
+- Cell values: 'stone' (present) or null (removed)
+- Initial state: Array(15).fill('stone')
+
+### Row Boundaries
+- Row 0: indices [0, 3) → 0, 1, 2
+- Row 1: indices [3, 8) → 3, 4, 5, 6, 7
+- Row 2: indices [8, 15) → 8, 9, 10, 11, 12, 13, 14
+
+### Game Rules (Misère variant)
+1. Player clicks on a stone at index i
+2. ALL stones at index i and to its RIGHT in the same row are removed (set to null)
+   - This means clicking the leftmost remaining stone in a row removes ALL remaining stones in that row
+   - Clicking a stone in the middle removes it and everything to its right
+3. Player must remove at least 1 stone per turn
+4. The player who takes the LAST stone LOSES (misère variant)
+5. After a move, if all 15 stones are null, the current player loses:
+   result = { winner: opponent, line: null }
+
+### Files to Create
+
+1. **server/utils/nimLogic.js** (CommonJS)
+   - `getInitialNimBoard()` → Array(15).fill('stone')
+   - `makeNimMove(board, index, turn)` — validate (must be a stone), remove stones from index rightward in same row, check if all removed
+   - `checkNimWinner(board)` — returns null (winner determined in makeNimMove context)
+   - `module.exports = { getInitialNimBoard, makeNimMove, checkNimWinner }`
+
+2. **client/src/utils/nimLogic.js** (ES module)
+   - Same logic with ES exports
+
+3. **client/src/components/NimBoard.jsx**
+   - Render 3 rows of stones in a pyramid-like layout (3, 5, 7)
+   - Stones are circular elements, present ones are colored, removed ones are invisible/placeholder
+   - When hovering a stone, highlight it AND all stones to its right in the same row (preview what will be removed)
+   - Clicking removes the highlighted stones
+   - Props: `{ board, onCellClick, turn }`
+   - Center each row horizontally for pyramid appearance
+
+4. **client/src/components/NimBoard.css**
+   - Pyramid layout: rows centered, each row wider than the one above
+   - Stone styling (circles, ~40px, colored)
+   - Removed stone placeholder (transparent/outline)
+   - Hover preview effect (dim/highlight stones that will be removed)
+   - Theme variables, responsive
+
+## Files You Own (DO NOT touch anything else)
+- server/utils/nimLogic.js
+- client/src/utils/nimLogic.js
+- client/src/components/NimBoard.jsx
+- client/src/components/NimBoard.css
+
+## Acceptance Criteria
+1. server/utils/nimLogic.js exports getInitialNimBoard, makeNimMove, checkNimWinner as CommonJS
+2. client/src/utils/nimLogic.js exports same as ES modules
+3. NimBoard.jsx renders 3 rows of stones (3, 5, 7) in a pyramid layout with hover preview
+4. makeNimMove correctly removes clicked stone and all to its right in the same row
+5. Returns { valid: false } when clicking null (removed) stones
+6. Misère win condition: player who takes last stone loses
+7. All files committed
+
+## PROGRESS.md
+Maintain a PROGRESS.md file in your working directory. Update it each iteration.
+
+## When Done
+When ALL acceptance criteria are met, output:
+<promise>TASK_task-nim_COMPLETE</promise>
+
+===TASK:task-integration===
+## Your Role
+You are integrating 4 new games (Gomoku, Mancala, Dots & Boxes, Nim) into an existing React + Express multiplayer gaming platform. All game logic and board components have already been created by other workers. You are wiring them into the shared files.
+
+## Project Conventions
+- camelCase for functions, PascalCase for components
+- Server: CommonJS, Client: ES modules
+- Games registered in Games.jsx GAMES array, rendered in Game.jsx, server logic in server.js
+- Sidebar.jsx has gameRouteMap and gameNameMap objects
+
+## Current State (what exists)
+Current GAMES array in Games.jsx:
+```javascript
+const GAMES = [
+    { id: 'tictactoe', name: 'Tic Tac Toe', desc: "The classic game of X's and O's.", route: 'tic-tac-toe', modes: ['pnp', '2p'] },
+    { id: 'connect4', name: 'Connect 4', desc: 'Connect 4 discs in a row to win!', route: 'connect4', modes: ['pnp', '2p'] },
+    { id: 'othello', name: 'Othello', desc: 'Outflank and flip your opponent\'s discs!', route: 'othello', modes: ['pnp', '2p'] },
+    { id: 'checkers', name: 'Checkers', desc: 'Jump and capture your way to victory!', route: 'checkers', modes: ['pnp', '2p'] },
+];
+```
+
+Current Sidebar.jsx maps:
+```javascript
+const gameRouteMap = { tictactoe: 'tic-tac-toe', connect4: 'connect4', othello: 'othello', checkers: 'checkers' };
+const gameNameMap = { tictactoe: 'Tic Tac Toe', connect4: 'Connect 4', othello: 'Othello', checkers: 'Checkers' };
+```
+
+Current server.js imports:
+```javascript
+const { makeTicTacToeMove, makeConnect4Move, makeOthelloMove } = require('./utils/gameLogic');
+const { getInitialCheckersBoard, makeCheckersMove } = require('./utils/checkersLogic');
+```
+
+## New Games to Add
+
+### 1. Gomoku (id: 'gomoku', route: 'gomoku')
+- Board: Array(225).fill(null) — 15×15 grid
+- Server logic: `const { makeGomokuMove } = require('./utils/gomokuLogic');`
+- Client logic: `import { makeGomokuMove } from '../utils/gomokuLogic';`
+- Client board: `import GomokuBoard from '../components/GomokuBoard';`
+- Uses standard X/O turns, standard handleCellClick pattern (same as tictactoe)
+- Board component: `<GomokuBoard board={board} onCellClick={handleCellClick} winningLine={result?.line} turn={turn} />`
+- Scoreboard: default X/O score display
+- Game title: 'Gomoku'
+
+### 2. Mancala (id: 'mancala', route: 'mancala')
+- Board: getInitialMancalaBoard() → [4,4,4,4,4,4,0,4,4,4,4,4,4,0]
+- Server logic: `const { getInitialMancalaBoard, makeMancalaMove } = require('./utils/mancalaLogic');`
+- Client logic: `import { getInitialMancalaBoard, makeMancalaMove } from '../utils/mancalaLogic';`
+- Client board: `import MancalaBoard from '../components/MancalaBoard';`
+- Uses X/O turns. Returns nextTurn (may be same player for extra turn).
+- Local play: call makeMancalaMove(board, index, turn), use returned nextTurn
+- Board component: `<MancalaBoard board={board} onCellClick={handleCellClick} turn={turn} myRole={myRole} isLocal={isLocal} />`
+- Scoreboard: `Player X: ${board[6]} | Player O: ${board[13]}` (store counts)
+- Game title: 'Mancala'
+
+### 3. Dots & Boxes (id: 'dotsboxes', route: 'dots-and-boxes')
+- Board: Array(33).fill(null)
+- Server logic: `const { getInitialDotsBoxesBoard, makeDotsBoxesMove } = require('./utils/dotsboxesLogic');`
+- Client logic: `import { getInitialDotsBoxesBoard, makeDotsBoxesMove } from '../utils/dotsboxesLogic';`
+- Client board: `import DotsBoxesBoard from '../components/DotsBoxesBoard';`
+- Uses X/O turns. Returns nextTurn (same player if box completed).
+- Local play: call makeDotsBoxesMove(board, index, turn), use returned nextTurn
+- Board component: `<DotsBoxesBoard board={board} onCellClick={handleCellClick} turn={turn} />`
+- Scoreboard: `X: ${board.slice(24).filter(c => c === 'X').length} boxes | O: ${board.slice(24).filter(c => c === 'O').length} boxes`
+- Game title: 'Dots & Boxes'
+
+### 4. Nim (id: 'nim', route: 'nim')
+- Board: getInitialNimBoard() → Array(15).fill('stone')
+- Server logic: `const { getInitialNimBoard, makeNimMove } = require('./utils/nimLogic');`
+- Client logic: `import { getInitialNimBoard, makeNimMove } from '../utils/nimLogic';`
+- Client board: `import NimBoard from '../components/NimBoard';`
+- Uses X/O turns.
+- Local play: call makeNimMove(board, index, turn), standard result handling
+- Board component: `<NimBoard board={board} onCellClick={handleCellClick} turn={turn} />`
+- Scoreboard: `Stones left: ${board.filter(s => s === 'stone').length}`
+- Game title: 'Nim'
+
+## Detailed Changes Per File
+
+### client/src/pages/Games.jsx
+Add 4 entries to GAMES array (after checkers):
+```javascript
+{ id: 'gomoku', name: 'Gomoku', desc: 'Get five in a row on a 15×15 board!', route: 'gomoku', modes: ['pnp', '2p'] },
+{ id: 'mancala', name: 'Mancala', desc: 'Capture stones and fill your store!', route: 'mancala', modes: ['pnp', '2p'] },
+{ id: 'dotsboxes', name: 'Dots & Boxes', desc: 'Draw lines and claim boxes!', route: 'dots-and-boxes', modes: ['pnp', '2p'] },
+{ id: 'nim', name: 'Nim', desc: 'Remove stones — but don\'t take the last one!', route: 'nim', modes: ['pnp', '2p'] },
+```
+
+### client/src/components/Sidebar.jsx
+Add to maps:
+```javascript
+const gameRouteMap = { tictactoe: 'tic-tac-toe', connect4: 'connect4', othello: 'othello', checkers: 'checkers', gomoku: 'gomoku', mancala: 'mancala', dotsboxes: 'dots-and-boxes', nim: 'nim' };
+const gameNameMap = { tictactoe: 'Tic Tac Toe', connect4: 'Connect 4', othello: 'Othello', checkers: 'Checkers', gomoku: 'Gomoku', mancala: 'Mancala', dotsboxes: 'Dots & Boxes', nim: 'Nim' };
+```
+
+### client/src/pages/Game.jsx
+1. Add imports at top:
+```javascript
+import GomokuBoard from '../components/GomokuBoard';
+import MancalaBoard from '../components/MancalaBoard';
+import DotsBoxesBoard from '../components/DotsBoxesBoard';
+import NimBoard from '../components/NimBoard';
+import { makeGomokuMove } from '../utils/gomokuLogic';
+import { getInitialMancalaBoard, makeMancalaMove } from '../utils/mancalaLogic';
+import { makeDotsBoxesMove } from '../utils/dotsboxesLogic';
+import { getInitialNimBoard, makeNimMove } from '../utils/nimLogic';
+```
+
+2. In getInitialBoard function, add cases:
+```javascript
+if (gType === 'gomoku') return Array(225).fill(null);
+if (gType === 'mancala') return getInitialMancalaBoard();
+if (gType === 'dotsboxes') return Array(33).fill(null);
+if (gType === 'nim') return getInitialNimBoard();
+```
+
+3. In handleCellClick local mode, add else-if branches for each game:
+```javascript
+} else if (gameType === 'gomoku') {
+    if (board[index]) return;
+    const newBoard = [...board];
+    newBoard[index] = turn;
+    setBoard(newBoard);
+    // Use local winner check from gomokuLogic
+    const moveResult = makeGomokuMove(board, index, turn);
+    if (!moveResult.valid) return;
+    setBoard(moveResult.board);
+    if (moveResult.result) {
+        setResult(moveResult.result);
+        if (moveResult.result.winner === 'draw') setGameMessage("It's a draw!");
+        else setGameMessage(`Player ${moveResult.result.winner} wins!`);
+    } else {
+        setTurn(turn === "X" ? "O" : "X");
+    }
+} else if (gameType === 'mancala') {
+    const moveResult = makeMancalaMove(board, index, turn);
+    if (!moveResult.valid) return;
+    setBoard(moveResult.board);
+    if (moveResult.result) {
+        setResult(moveResult.result);
+        if (moveResult.result.winner === 'draw') setGameMessage("It's a draw!");
+        else setGameMessage(`Player ${moveResult.result.winner} wins!`);
+    } else {
+        setTurn(moveResult.nextTurn);
+    }
+} else if (gameType === 'dotsboxes') {
+    const moveResult = makeDotsBoxesMove(board, index, turn);
+    if (!moveResult.valid) return;
+    setBoard(moveResult.board);
+    if (moveResult.result) {
+        setResult(moveResult.result);
+        if (moveResult.result.winner === 'draw') setGameMessage("It's a draw!");
+        else setGameMessage(`Player ${moveResult.result.winner} wins!`);
+    } else {
+        setTurn(moveResult.nextTurn);
+    }
+} else if (gameType === 'nim') {
+    const moveResult = makeNimMove(board, index, turn);
+    if (!moveResult.valid) return;
+    setBoard(moveResult.board);
+    if (moveResult.result) {
+        setResult(moveResult.result);
+        setGameMessage(`Player ${moveResult.result.winner} wins!`);
+    } else {
+        setTurn(moveResult.nextTurn);
+    }
+}
+```
+
+4. In board rendering JSX (around line 463-471), add conditions:
+```jsx
+gameType === 'gomoku' ? (
+    <GomokuBoard board={board} onCellClick={handleCellClick} winningLine={result?.line} turn={turn} />
+) : gameType === 'mancala' ? (
+    <MancalaBoard board={board} onCellClick={handleCellClick} turn={turn} myRole={myRole} isLocal={isLocal} />
+) : gameType === 'dotsboxes' ? (
+    <DotsBoxesBoard board={board} onCellClick={handleCellClick} turn={turn} />
+) : gameType === 'nim' ? (
+    <NimBoard board={board} onCellClick={handleCellClick} turn={turn} />
+) :
+```
+
+5. In game title h2 (around line 427), add names:
+```javascript
+gameType === 'gomoku' ? 'Gomoku' : gameType === 'mancala' ? 'Mancala' : gameType === 'dotsboxes' ? 'Dots & Boxes' : gameType === 'nim' ? 'Nim' :
+```
+
+6. In scoreboard (around line 446), add game-specific displays:
+```jsx
+gameType === 'mancala' ? (
+    `Player X: ${board[6]} | Player O: ${board[13]}`
+) : gameType === 'dotsboxes' ? (
+    `X: ${board.slice(24).filter(c => c === 'X').length} boxes | O: ${board.slice(24).filter(c => c === 'O').length} boxes`
+) : gameType === 'nim' ? (
+    `Stones left: ${board.filter(s => s === 'stone').length}`
+) :
+```
+
+### server/server.js
+1. Add imports at top:
+```javascript
+const { makeGomokuMove } = require('./utils/gomokuLogic');
+const { getInitialMancalaBoard, makeMancalaMove } = require('./utils/mancalaLogic');
+const { getInitialDotsBoxesBoard, makeDotsBoxesMove } = require('./utils/dotsboxesLogic');
+const { getInitialNimBoard, makeNimMove } = require('./utils/nimLogic');
+```
+
+2. In createRoom handler, update boardSize calculation and board initialization:
+```javascript
+// Add to the boardSize/board logic around line 172-184:
+const getBoardForGameType = (gameType) => {
+    switch(gameType) {
+        case 'connect4': return Array(42).fill(null);
+        case 'othello': {
+            const b = Array(64).fill(null);
+            b[27] = 'O'; b[28] = 'X'; b[35] = 'X'; b[36] = 'O';
+            return b;
+        }
+        case 'checkers': return getInitialCheckersBoard();
+        case 'gomoku': return Array(225).fill(null);
+        case 'mancala': return getInitialMancalaBoard();
+        case 'dotsboxes': return Array(33).fill(null);
+        case 'nim': return getInitialNimBoard();
+        default: return Array(9).fill(null); // tictactoe
+    }
+};
+```
+Use this helper in createRoom, restartGame, and rematch.
+
+3. In makeMove handler (around line 250-260), add game branches:
+```javascript
+} else if (room.gameType === 'gomoku') {
+    moveResult = makeGomokuMove(room.board, index, player);
+} else if (room.gameType === 'mancala') {
+    moveResult = makeMancalaMove(room.board, index, player);
+} else if (room.gameType === 'dotsboxes') {
+    moveResult = makeDotsBoxesMove(room.board, index, player);
+} else if (room.gameType === 'nim') {
+    moveResult = makeNimMove(room.board, index, player);
+}
+```
+
+4. In the turn-switching after a valid move, handle nextTurn for mancala and dotsboxes:
+For mancala and dotsboxes, the nextTurn from the move function should be used (may be same player for extra turns). The existing pattern handles this:
+```javascript
+room.turn = moveResult.nextTurn || (player === "X" ? "O" : "X");
+```
+This already works since all new games return nextTurn.
+
+5. In restartGame and rematch handlers, use the same getBoardForGameType helper for board reset.
+
+## Files You Own (DO NOT touch anything else)
+- server/server.js
+- client/src/pages/Game.jsx
+- client/src/pages/Games.jsx
+- client/src/components/Sidebar.jsx
+
+## Acceptance Criteria
+1. All 4 new games appear in Games.jsx GAMES array with 'pnp' and '2p' modes
+2. Sidebar.jsx maps include all 4 new games
+3. Game.jsx imports all new board components and logic, renders correct board per game type
+4. Game.jsx getInitialBoard returns correct initial board for each new game
+5. Game.jsx handleCellClick has local play logic for each new game
+6. Game.jsx scoreboard shows appropriate info for each game
+7. Game.jsx title shows correct name for each game
+8. server.js imports all new game logic modules
+9. server.js createRoom initializes correct board for each game type
+10. server.js makeMove calls correct game logic for each game type
+11. server.js restartGame and rematch reset boards correctly for each game type
+12. All files committed
+
+## PROGRESS.md
+Maintain a PROGRESS.md file in your working directory. Update it each iteration.
+
+## When Done
+When ALL acceptance criteria are met, output:
+<promise>TASK_task-integration_COMPLETE</promise>

@@ -1,0 +1,40 @@
+{
+  "language": "javascript",
+  "framework": "react+express",
+  "architecture": "client-server with Socket.IO real-time communication. React SPA frontend (Vite), Express+Socket.IO backend. Games use flat array boards with move validation on both client (local play) and server (online play).",
+  "dependencies": ["react", "react-router-dom", "socket.io-client", "vite", "express", "socket.io", "cors"],
+  "code_style": {
+    "naming": "camelCase for functions/variables, PascalCase for components. Game IDs are lowercase strings (e.g. 'tictactoe', 'connect4'). Board components named {Game}Board.jsx.",
+    "imports": "Named imports from relative paths. React components use default exports. Game logic modules export named functions (make{Game}Move, check{Game}Winner, getInitial{Game}Board).",
+    "error_handling": "Socket callbacks with { error } or { success } patterns. No try-catch blocks in game logic — invalid moves return { valid: false }.",
+    "file_organization": "By layer: components/, pages/, context/, utils/ on client. utils/ on server. Each game has: server logic (server/utils/), client logic (client/src/utils/), board component (client/src/components/), board CSS."
+  },
+  "testing": {
+    "framework": "none",
+    "pattern": "no tests detected",
+    "run_command": null,
+    "style": "none"
+  },
+  "quality_gates": {
+    "test": null,
+    "lint": "cd client && npx eslint src/",
+    "typecheck": null,
+    "build": "cd client && npm run build"
+  },
+  "conventions": [
+    "Each game needs: server logic file, client logic file (for local play), Board component + CSS, registration in Games.jsx GAMES array, rendering branch in Game.jsx, server.js move/init/restart/rematch handlers",
+    "Board state is a flat array (e.g. Array(9) for 3x3, Array(64) for 8x8). null = empty.",
+    "Move functions return { valid: boolean, board, result, nextTurn }. result is { winner, line } or null.",
+    "Games use X/O for standard 2-player roles, b/r for checkers-style games.",
+    "Server handles: createRoom board init, makeMove validation, restartGame reset, rematch reset.",
+    "Sidebar.jsx has gameRouteMap and gameNameMap that must be updated for new games.",
+    "Game.jsx handleCellClick handles local move logic per game type. Online moves emit 'makeMove' socket event.",
+    "Timer uses 30-second turns. Timer logic in server for online, useEffect interval for local.",
+    "Commit messages follow: feat(scope): description pattern"
+  ],
+  "style_examples": [
+    "// Game logic pattern (server/client)\nconst make{Game}Move = (board, index, turn) => {\n  if (board[index] !== null) return { valid: false };\n  const newBoard = [...board];\n  newBoard[index] = turn;\n  const result = check{Game}Winner(newBoard);\n  return { valid: true, board: newBoard, result };\n};",
+    "// Board component pattern\nconst {Game}Board = ({ board, onCellClick, turn }) => {\n  return (\n    <div className=\"{game}-board\">\n      {board.map((value, index) => (\n        <div key={index} className=\"{game}-cell\" onClick={() => onCellClick(index)}>\n          {/* render cell content */}\n        </div>\n      ))}\n    </div>\n  );\n};",
+    "// Games.jsx registration\nconst GAMES = [\n  { id: 'gameid', name: 'Game Name', desc: 'Description.', route: 'game-route', modes: ['pnp', '2p'] },\n];"
+  ]
+}
