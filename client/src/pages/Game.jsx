@@ -5,8 +5,16 @@ import Board from '../components/Board';
 import Connect4Board from '../components/Connect4Board';
 import OthelloBoard from '../components/OthelloBoard';
 import CheckersBoard from '../components/CheckersBoard';
+import GomokuBoard from '../components/GomokuBoard';
+import MancalaBoard from '../components/MancalaBoard';
+import DotsBoxesBoard from '../components/DotsBoxesBoard';
+import NimBoard from '../components/NimBoard';
 import { makeOthelloMove } from '../utils/othelloLogic';
 import { getInitialCheckersBoard, makeCheckersMove } from '../utils/checkersLogic';
+import { makeGomokuMove } from '../utils/gomokuLogic';
+import { getInitialMancalaBoard, makeMancalaMove } from '../utils/mancalaLogic';
+import { getInitialDotsBoxesBoard, makeDotsBoxesMove } from '../utils/dotsboxesLogic';
+import { getInitialNimBoard, makeNimMove } from '../utils/nimLogic';
 import Chat from '../components/Chat';
 import { playMove, playWin, playLose, playJoin, playTimeout, playTick } from '../utils/sounds';
 import './Game.css';
@@ -25,6 +33,10 @@ function Game() {
       return b;
     }
     if (gType === 'checkers') return getInitialCheckersBoard();
+    if (gType === 'gomoku') return Array(225).fill(null);
+    if (gType === 'mancala') return getInitialMancalaBoard();
+    if (gType === 'dotsboxes') return getInitialDotsBoxesBoard();
+    if (gType === 'nim') return getInitialNimBoard();
     return Array(9).fill(null);
   };
   const [board, setBoard] = useState(getInitialBoard(initialGameType));
@@ -281,7 +293,55 @@ function Game() {
         } else if (gameType === 'othello') {
           const moveResult = makeOthelloMove(board, index, turn);
           if (!moveResult.valid) return;
-          
+
+          setBoard(moveResult.board);
+          if (moveResult.result) {
+            setResult(moveResult.result);
+            if (moveResult.result.winner === 'draw') setGameMessage("It's a draw!");
+            else setGameMessage(`Player ${moveResult.result.winner} wins!`);
+          } else {
+            setTurn(moveResult.nextTurn);
+          }
+        } else if (gameType === 'gomoku') {
+          const moveResult = makeGomokuMove(board, index, turn);
+          if (!moveResult.valid) return;
+
+          setBoard(moveResult.board);
+          if (moveResult.result) {
+            setResult(moveResult.result);
+            if (moveResult.result.winner === 'draw') setGameMessage("It's a draw!");
+            else setGameMessage(`Player ${moveResult.result.winner} wins!`);
+          } else {
+            setTurn(turn === 'X' ? 'O' : 'X');
+          }
+        } else if (gameType === 'mancala') {
+          const moveResult = makeMancalaMove(board, index, turn);
+          if (!moveResult.valid) return;
+
+          setBoard(moveResult.board);
+          if (moveResult.result) {
+            setResult(moveResult.result);
+            if (moveResult.result.winner === 'draw') setGameMessage("It's a draw!");
+            else setGameMessage(`Player ${moveResult.result.winner} wins!`);
+          } else {
+            setTurn(moveResult.nextTurn);
+          }
+        } else if (gameType === 'dotsboxes') {
+          const moveResult = makeDotsBoxesMove(board, index, turn);
+          if (!moveResult.valid) return;
+
+          setBoard(moveResult.board);
+          if (moveResult.result) {
+            setResult(moveResult.result);
+            if (moveResult.result.winner === 'draw') setGameMessage("It's a draw!");
+            else setGameMessage(`Player ${moveResult.result.winner} wins!`);
+          } else {
+            setTurn(moveResult.nextTurn);
+          }
+        } else if (gameType === 'nim') {
+          const moveResult = makeNimMove(board, index, turn);
+          if (!moveResult.valid) return;
+
           setBoard(moveResult.board);
           if (moveResult.result) {
             setResult(moveResult.result);
@@ -306,7 +366,10 @@ function Game() {
         }
       }
     } else {
-      if (gameType !== 'connect4' && board[index]) return;
+      // For standard grid games, skip if cell is already occupied
+      // (connect4, mancala, dotsboxes, nim handle validity server-side)
+      const skipOccupiedCheck = ['connect4', 'mancala', 'dotsboxes', 'nim'];
+      if (!skipOccupiedCheck.includes(gameType) && board[index]) return;
       if (turn === myRole) {
         socket.emit("makeMove", { code: roomCode, index, player: myRole });
       }
@@ -424,7 +487,7 @@ function Game() {
 
   return (
     <div className="game-container">
-      <h2>{gameType === 'connect4' ? 'Connect 4' : gameType === 'othello' ? 'Othello' : gameType === 'checkers' ? 'Checkers' : 'Tic Tac Toe'}</h2>
+      <h2>{gameType === 'connect4' ? 'Connect 4' : gameType === 'othello' ? 'Othello' : gameType === 'checkers' ? 'Checkers' : gameType === 'gomoku' ? 'Gomoku' : gameType === 'mancala' ? 'Mancala' : gameType === 'dotsboxes' ? 'Dots & Boxes' : gameType === 'nim' ? 'Nim' : 'Tic Tac Toe'}</h2>
       {isSpectator && <div className="spectator-badge">👁 Spectating</div>}
       {!isLocal && !isSpectator && myName && <div className="player-names">Playing as {myName} ({myRole === 'b' ? 'Black' : myRole === 'r' ? 'Red' : myRole})</div>}
       {isSpectator && playerNames.length >= 2 && (
@@ -448,6 +511,12 @@ function Game() {
           `Black (X): ${board.filter(c => c === 'X').length} | White (O): ${board.filter(c => c === 'O').length}`
         ) : gameType === 'checkers' ? (
           `Black: ${board.filter(c => c && c.toLowerCase() === 'b').length} | Red: ${board.filter(c => c && c.toLowerCase() === 'r').length}`
+        ) : gameType === 'mancala' ? (
+          `X Store: ${board[6]} | O Store: ${board[13]}`
+        ) : gameType === 'dotsboxes' ? (
+          `X Boxes: ${board.slice(24).filter(c => c === 'X').length} | O Boxes: ${board.slice(24).filter(c => c === 'O').length}`
+        ) : gameType === 'nim' ? (
+          `Stones left: ${board.filter(c => c === 'stone').length}`
         ) : (
           `X: ${score.X} | O: ${score.O}`
         )}
@@ -466,6 +535,14 @@ function Game() {
         <OthelloBoard board={board} onCellClick={handleCellClick} turn={turn} />
       ) : gameType === 'checkers' ? (
         <CheckersBoard board={board} onMove={handleCheckersMove} turn={turn} myRole={myRole} isLocal={isLocal} />
+      ) : gameType === 'gomoku' ? (
+        <GomokuBoard board={board} onCellClick={handleCellClick} winningLine={result?.line} turn={turn} />
+      ) : gameType === 'mancala' ? (
+        <MancalaBoard board={board} onCellClick={handleCellClick} turn={turn} myRole={myRole} isLocal={isLocal} />
+      ) : gameType === 'dotsboxes' ? (
+        <DotsBoxesBoard board={board} onCellClick={handleCellClick} turn={turn} />
+      ) : gameType === 'nim' ? (
+        <NimBoard board={board} onCellClick={handleCellClick} turn={turn} />
       ) : (
         <Board board={board} onCellClick={handleCellClick} winningLine={result?.line} />
       )}

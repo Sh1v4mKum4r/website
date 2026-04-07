@@ -4,6 +4,10 @@ const { Server } = require("socket.io");
 const cors = require('cors');
 const { makeTicTacToeMove, makeConnect4Move, makeOthelloMove } = require('./utils/gameLogic');
 const { getInitialCheckersBoard, makeCheckersMove } = require('./utils/checkersLogic');
+const { makeGomokuMove } = require('./utils/gomokuLogic');
+const { getInitialMancalaBoard, makeMancalaMove } = require('./utils/mancalaLogic');
+const { getInitialDotsBoxesBoard, makeDotsBoxesMove } = require('./utils/dotsboxesLogic');
+const { getInitialNimBoard, makeNimMove } = require('./utils/nimLogic');
 
 const app = express();
 app.use(cors());
@@ -69,6 +73,21 @@ const generateCode = (len = 4) => {
   let code = '';
   for (let i = 0; i < len; i++) code += chars[Math.floor(Math.random() * chars.length)];
   return code;
+};
+
+const getBoardForGameType = (gameType) => {
+  if (gameType === 'connect4') return Array(42).fill(null);
+  if (gameType === 'othello') {
+    const b = Array(64).fill(null);
+    b[27] = 'O'; b[28] = 'X'; b[35] = 'X'; b[36] = 'O';
+    return b;
+  }
+  if (gameType === 'checkers') return getInitialCheckersBoard();
+  if (gameType === 'gomoku') return Array(225).fill(null);
+  if (gameType === 'mancala') return getInitialMancalaBoard();
+  if (gameType === 'dotsboxes') return getInitialDotsBoxesBoard();
+  if (gameType === 'nim') return getInitialNimBoard();
+  return Array(9).fill(null);
 };
 
 const checkWinner = (board) => {
@@ -169,19 +188,7 @@ io.on('connection', (socket) => {
     const generateCode = (len) => Math.random().toString(36).substring(2, 2 + len).toUpperCase();
     do { roomCode = generateCode(4); } while (lobby.rooms[roomCode]);
 
-    const boardSize = gameType === 'connect4' ? 42 : (gameType === 'othello' || gameType === 'checkers' ? 64 : 9);
-    let board;
-    if (gameType === 'othello') {
-      board = Array(boardSize).fill(null);
-      board[27] = 'O';
-      board[28] = 'X';
-      board[35] = 'X';
-      board[36] = 'O';
-    } else if (gameType === 'checkers') {
-      board = getInitialCheckersBoard();
-    } else {
-      board = Array(boardSize).fill(null);
-    }
+    const board = getBoardForGameType(gameType);
 
     lobby.rooms[roomCode] = {
       gameType,
@@ -254,6 +261,14 @@ io.on('connection', (socket) => {
       moveResult = makeOthelloMove(room.board, index, player);
     } else if (room.gameType === 'checkers') {
       moveResult = makeCheckersMove(room.board, data.fromIndex, data.toIndex, player, room.mustMoveIndex);
+    } else if (room.gameType === 'gomoku') {
+      moveResult = makeGomokuMove(room.board, index, player);
+    } else if (room.gameType === 'mancala') {
+      moveResult = makeMancalaMove(room.board, index, player);
+    } else if (room.gameType === 'dotsboxes') {
+      moveResult = makeDotsBoxesMove(room.board, index, player);
+    } else if (room.gameType === 'nim') {
+      moveResult = makeNimMove(room.board, index, player);
     } else {
       moveResult = makeTicTacToeMove(room.board, index, player);
     }
@@ -287,20 +302,7 @@ io.on('connection', (socket) => {
 
     const room = lobbies[lobbyCode]?.rooms[code];
     if (room) {
-      const boardSize = room.gameType === 'connect4' ? 42 : (room.gameType === 'othello' || room.gameType === 'checkers' ? 64 : 9);
-      let board;
-      if (room.gameType === 'othello') {
-        board = Array(boardSize).fill(null);
-        board[27] = 'O';
-        board[28] = 'X';
-        board[35] = 'X';
-        board[36] = 'O';
-      } else if (room.gameType === 'checkers') {
-        board = getInitialCheckersBoard();
-      } else {
-        board = Array(boardSize).fill(null);
-      }
-      room.board = board;
+      room.board = getBoardForGameType(room.gameType);
       room.turn = room.gameType === 'checkers' ? 'b' : 'X';
       room.mustMoveIndex = null;
       room.result = null;
@@ -326,20 +328,7 @@ io.on('connection', (socket) => {
         room.score = { X: 0, O: 0 };
         room.seriesWinner = null;
       }
-      const boardSize = room.gameType === 'connect4' ? 42 : (room.gameType === 'othello' || room.gameType === 'checkers' ? 64 : 9);
-      let board;
-      if (room.gameType === 'othello') {
-        board = Array(boardSize).fill(null);
-        board[27] = 'O';
-        board[28] = 'X';
-        board[35] = 'X';
-        board[36] = 'O';
-      } else if (room.gameType === 'checkers') {
-        board = getInitialCheckersBoard();
-      } else {
-        board = Array(boardSize).fill(null);
-      }
-      room.board = board;
+      room.board = getBoardForGameType(room.gameType);
       room.turn = room.gameType === 'checkers' ? 'b' : 'X';
       room.mustMoveIndex = null;
       room.result = null;
