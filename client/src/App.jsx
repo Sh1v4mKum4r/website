@@ -19,9 +19,17 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route element={<MainLayout />}>
                 <Route path="/games" element={<Games />} />
+                <Route path="/game/tic-tac-toe/:roomCode" element={<Game />} />
                 <Route path="/game/connect4/:roomCode" element={<Game />} />
                 <Route path="/game/othello/:roomCode" element={<Game />} />
                 <Route path="/game/checkers/:roomCode" element={<Game />} />
+                <Route path="/game/gomoku/:roomCode" element={<Game />} />
+                <Route path="/game/mancala/:roomCode" element={<Game />} />
+                <Route path="/game/dots-and-boxes/:roomCode" element={<Game />} />
+                <Route path="/game/nim/:roomCode" element={<Game />} />
+                <Route path="/game/ultimate-tic-tac-toe/:roomCode" element={<Game />} />
+                <Route path="/game/chain-reaction/:roomCode" element={<Game />} />
+                <Route path="/game/memory/:roomCode" element={<Game />} />
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
