@@ -1,11 +1,11 @@
 // Chain Reaction Game Logic
-// Board: Array(80) — 10 rows x 8 cols. Index = row * 8 + col.
+// Board: Array(81) — 9 rows x 9 cols. Index = row * 9 + col.
 // Each cell: null (empty) or string like 'R2' (Red player, 2 atoms)
 // Player colors: R=Red, G=Green, B=Blue, Y=Yellow, P=Purple, C=Cyan
 
 const CHAIN_COLORS = ['R', 'G', 'B', 'Y', 'P', 'C'];
-const ROWS = 10;
-const COLS = 8;
+const ROWS = 9;
+const COLS = 9;
 
 const getInitialChainBoard = () => {
     return Array(ROWS * COLS).fill(null);
