@@ -1,4 +1,4 @@
-/* Chain Reaction Board — 9x9 grid */
+/* Chain Reaction Board — 9x9 grid, cell size matches UTTT */
 
 .chain-board-wrapper {
     display: flex;
@@ -31,7 +31,7 @@
     gap: 2px;
     background-color: var(--accent, #7c3aed);
     width: 100%;
-    max-width: 800px;
+    max-width: 520px;
     aspect-ratio: 1 / 1;
     margin: 0 auto;
     border-radius: 8px;
@@ -65,18 +65,18 @@
     background-color: var(--bg-secondary, #1e1e2e);
 }
 
-/* Owner tints */
-.chain-cell.owner-R { background-color: rgba(239, 68, 68, 0.12); }
-.chain-cell.owner-G { background-color: rgba(34, 197, 94, 0.12); }
-.chain-cell.owner-B { background-color: rgba(59, 130, 246, 0.12); }
+/* Owner tints — X=red, O=blue, Y=yellow, G=green, P=purple, C=cyan */
+.chain-cell.owner-X { background-color: rgba(239, 68, 68, 0.12); }
+.chain-cell.owner-O { background-color: rgba(59, 130, 246, 0.12); }
 .chain-cell.owner-Y { background-color: rgba(234, 179, 8, 0.12); }
+.chain-cell.owner-G { background-color: rgba(34, 197, 94, 0.12); }
 .chain-cell.owner-P { background-color: rgba(168, 85, 247, 0.12); }
 .chain-cell.owner-C { background-color: rgba(6, 182, 212, 0.12); }
 
-.chain-cell.owner-R:hover { background-color: rgba(239, 68, 68, 0.22); }
-.chain-cell.owner-G:hover { background-color: rgba(34, 197, 94, 0.22); }
-.chain-cell.owner-B:hover { background-color: rgba(59, 130, 246, 0.22); }
+.chain-cell.owner-X:hover { background-color: rgba(239, 68, 68, 0.22); }
+.chain-cell.owner-O:hover { background-color: rgba(59, 130, 246, 0.22); }
 .chain-cell.owner-Y:hover { background-color: rgba(234, 179, 8, 0.22); }
+.chain-cell.owner-G:hover { background-color: rgba(34, 197, 94, 0.22); }
 .chain-cell.owner-P:hover { background-color: rgba(168, 85, 247, 0.22); }
 .chain-cell.owner-C:hover { background-color: rgba(6, 182, 212, 0.22); }
 
@@ -119,19 +119,19 @@
     height: 28%;
 }
 
-/* Player colors for atoms */
-.chain-atom.color-R { background-color: #ef4444; color: #ef4444; }
-.chain-atom.color-G { background-color: #22c55e; color: #22c55e; }
-.chain-atom.color-B { background-color: #3b82f6; color: #3b82f6; }
+/* Player colors for atoms — X=red, O=blue, Y=yellow, G=green, P=purple, C=cyan */
+.chain-atom.color-X { background-color: #ef4444; color: #ef4444; }
+.chain-atom.color-O { background-color: #3b82f6; color: #3b82f6; }
 .chain-atom.color-Y { background-color: #eab308; color: #eab308; }
+.chain-atom.color-G { background-color: #22c55e; color: #22c55e; }
 .chain-atom.color-P { background-color: #a855f7; color: #a855f7; }
 .chain-atom.color-C { background-color: #06b6d4; color: #06b6d4; }
 
 /* Turn indicator dot colors */
-.chain-turn-dot.color-R { background-color: #ef4444; color: #ef4444; }
-.chain-turn-dot.color-G { background-color: #22c55e; color: #22c55e; }
-.chain-turn-dot.color-B { background-color: #3b82f6; color: #3b82f6; }
+.chain-turn-dot.color-X { background-color: #ef4444; color: #ef4444; }
+.chain-turn-dot.color-O { background-color: #3b82f6; color: #3b82f6; }
 .chain-turn-dot.color-Y { background-color: #eab308; color: #eab308; }
+.chain-turn-dot.color-G { background-color: #22c55e; color: #22c55e; }
 .chain-turn-dot.color-P { background-color: #a855f7; color: #a855f7; }
 .chain-turn-dot.color-C { background-color: #06b6d4; color: #06b6d4; }
 
@@ -203,7 +203,7 @@
 /* Responsive — tablets */
 @media (max-width: 600px) {
     .chain-board {
-        max-width: 500px;
+        max-width: 380px;
         gap: 1px;
         border-width: 2px;
     }
@@ -232,7 +232,7 @@
 /* Responsive — phones */
 @media (max-width: 400px) {
     .chain-board {
-        max-width: 350px;
+        max-width: 300px;
     }
 
     .chain-board-wrapper {
