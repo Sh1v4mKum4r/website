@@ -1,0 +1,186 @@
+.mancala-board {
+    display: flex;
+    align-items: stretch;
+    background-color: var(--bg-secondary);
+    border: 4px solid var(--accent);
+    border-radius: 60px;
+    padding: 16px;
+    gap: 12px;
+    width: 100%;
+    max-width: 700px;
+    margin: 20px auto;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* Stores (mancalas) on left and right */
+.mancala-store {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 60px;
+    width: 70px;
+    min-height: 140px;
+    border-radius: 40px;
+    background-color: var(--bg-primary);
+    border: 2px solid var(--accent);
+    box-shadow: inset 0 4px 10px rgba(0, 0, 0, 0.4);
+    gap: 6px;
+}
+
+.store-label {
+    font-size: 14px;
+    font-weight: bold;
+    opacity: 0.6;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.store-o .store-label {
+    color: var(--accent);
+}
+
+.store-x .store-label {
+    color: var(--accent-secondary);
+}
+
+.store-count {
+    font-size: 28px;
+    font-weight: bold;
+    color: var(--text-primary);
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+}
+
+/* Middle section containing the two rows of pits */
+.mancala-pits {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    justify-content: center;
+}
+
+.pit-row {
+    display: flex;
+    gap: 8px;
+    justify-content: space-around;
+}
+
+/* Individual pits */
+.mancala-pit {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background-color: var(--bg-primary);
+    border: 2px solid var(--bg-tertiary);
+    box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.4);
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+    cursor: default;
+    user-select: none;
+}
+
+.pit-stones {
+    font-size: 20px;
+    font-weight: bold;
+    color: var(--text-primary);
+    pointer-events: none;
+}
+
+/* Clickable pits */
+.mancala-pit.clickable {
+    cursor: pointer;
+}
+
+.mancala-pit.clickable:hover {
+    transform: scale(1.1);
+}
+
+.turn-x .mancala-pit.pit-x.clickable:hover {
+    border-color: var(--accent-secondary);
+    box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.4), 0 0 12px var(--accent-secondary);
+}
+
+.turn-o .mancala-pit.pit-o.clickable:hover {
+    border-color: var(--accent);
+    box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.4), 0 0 12px var(--accent);
+}
+
+/* Subtle indicator for whose turn it is */
+.turn-x .store-x {
+    border-color: var(--accent-secondary);
+    box-shadow: inset 0 4px 10px rgba(0, 0, 0, 0.4), 0 0 10px var(--accent-secondary);
+}
+
+.turn-o .store-o {
+    border-color: var(--accent);
+    box-shadow: inset 0 4px 10px rgba(0, 0, 0, 0.4), 0 0 10px var(--accent);
+}
+
+/* Responsive design */
+@media (max-width: 600px) {
+    .mancala-board {
+        border-radius: 40px;
+        padding: 10px;
+        gap: 8px;
+        max-width: 95vw;
+    }
+
+    .mancala-store {
+        min-width: 44px;
+        width: 50px;
+        min-height: 110px;
+        border-radius: 30px;
+    }
+
+    .store-count {
+        font-size: 22px;
+    }
+
+    .store-label {
+        font-size: 12px;
+    }
+
+    .mancala-pit {
+        width: 42px;
+        height: 42px;
+    }
+
+    .pit-stones {
+        font-size: 16px;
+    }
+
+    .pit-row {
+        gap: 4px;
+    }
+}
+
+@media (max-width: 400px) {
+    .mancala-board {
+        border-radius: 30px;
+        padding: 8px;
+        gap: 6px;
+    }
+
+    .mancala-store {
+        min-width: 36px;
+        width: 42px;
+        min-height: 90px;
+        border-radius: 24px;
+    }
+
+    .store-count {
+        font-size: 18px;
+    }
+
+    .mancala-pit {
+        width: 34px;
+        height: 34px;
+    }
+
+    .pit-stones {
+        font-size: 14px;
+    }
+}
