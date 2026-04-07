@@ -32,9 +32,8 @@
     grid-template-rows: repeat(9, 1fr);
     gap: 2px;
     background-color: var(--accent, #7c3aed);
-    width: 100%;
-    max-width: 800px;
-    aspect-ratio: 1 / 1;
+    width: min(800px, calc(100vw - 60px));
+    height: min(800px, calc(100vw - 60px));
     margin: 0 auto;
     border-radius: 8px;
     overflow: hidden;
@@ -205,7 +204,8 @@
 /* Responsive — tablets */
 @media (max-width: 600px) {
     .chain-board {
-        max-width: 380px;
+        width: calc(100vw - 30px);
+        height: calc(100vw - 30px);
         gap: 1px;
         border-width: 2px;
     }
@@ -234,7 +234,8 @@
 /* Responsive — phones */
 @media (max-width: 400px) {
     .chain-board {
-        max-width: 300px;
+        width: calc(100vw - 20px);
+        height: calc(100vw - 20px);
     }
 
     .chain-board-wrapper {
