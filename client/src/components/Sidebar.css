@@ -340,6 +340,43 @@
     font-size: 0.9rem;
 }
 
+.room-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+
+.bot-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 6px;
+}
+
+.bot-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-right: 2px;
+}
+
+.bot-btn {
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.bot-btn:hover { border-color: var(--accent); color: var(--text-primary); }
+.bot-btn.easy:hover { border-color: #22c55e; color: #22c55e; }
+.bot-btn.medium:hover { border-color: #eab308; color: #eab308; }
+.bot-btn.hard:hover { border-color: #ef4444; color: #ef4444; }
+
 /* Chat at bottom of sidebar */
 .chat-section {
     margin-top: auto;

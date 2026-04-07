@@ -95,6 +95,13 @@ function Sidebar({ isOpen, onClose }) {
     });
   };
 
+  const handleAddBot = (difficulty) => {
+    socket.emit('addBot', { difficulty }, (response) => {
+      if (response.error) return addToast(response.error, 'error');
+      addToast(`${response.botName} joined!`, 'success');
+    });
+  };
+
   const handleWatchRoom = (roomCode, gameType) => {
     socket.emit('spectateRoom', roomCode, ({ gameData, error }) => {
       if (error) return addToast(error, 'error');
@@ -195,21 +202,31 @@ function Sidebar({ isOpen, onClose }) {
                         <span className="players">{room.playerNames.join(' vs ')}</span>
                         {room.spectatorCount > 0 && <span className="spectator-count">👁 {room.spectatorCount}</span>}
                       </div>
-                      {room.isFull ? (
-                        <button
-                          className="watch-btn"
-                          onClick={() => handleWatchRoom(room.code, room.gameType)}
-                        >
-                          Watch
-                        </button>
-                      ) : (
-                        <button
-                          className="join-btn"
-                          onClick={() => handleJoinRoom(room.code, room.gameType)}
-                        >
-                          Join
-                        </button>
-                      )}
+                      <div className="room-actions">
+                        {room.isFull ? (
+                          <button
+                            className="watch-btn"
+                            onClick={() => handleWatchRoom(room.code, room.gameType)}
+                          >
+                            Watch
+                          </button>
+                        ) : (
+                          <button
+                            className="join-btn"
+                            onClick={() => handleJoinRoom(room.code, room.gameType)}
+                          >
+                            Join
+                          </button>
+                        )}
+                        {!room.isFull && (
+                          <div className="bot-controls">
+                            <span className="bot-label">Add Bot:</span>
+                            <button className="bot-btn easy" onClick={() => handleAddBot('easy')}>Easy</button>
+                            <button className="bot-btn medium" onClick={() => handleAddBot('medium')}>Med</button>
+                            <button className="bot-btn hard" onClick={() => handleAddBot('hard')}>Hard</button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))
                 )}

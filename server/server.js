@@ -11,6 +11,7 @@ const { getInitialNimBoard, makeNimMove } = require('./utils/nimLogic');
 const { getInitialUTTTState, makeUTTTMove } = require('./utils/utttLogic');
 const { getInitialChainBoard, makeChainMove, CHAIN_COLORS } = require('./utils/chainLogic');
 const { getInitialMemoryState, makeMemoryMove } = require('./utils/memoryLogic');
+const { getBotMove } = require('./utils/botLogic');
 
 const app = express();
 app.use(cors());
@@ -150,6 +151,140 @@ const broadcastLobbyState = (lobbyCode) => {
     players: lobby.players,
     rooms: roomList
   });
+};
+
+// ── Execute a move (shared by human makeMove and bot scheduleBotMove) ──
+const executeMove = (lobbyCode, roomCode, index, player, data) => {
+  const room = lobbies[lobbyCode]?.rooms[roomCode];
+  if (!room || room.turn !== player) return false;
+
+  let moveResult;
+  if (room.gameType === 'connect4') {
+    moveResult = makeConnect4Move(room.board, index, player);
+  } else if (room.gameType === 'othello') {
+    moveResult = makeOthelloMove(room.board, index, player);
+  } else if (room.gameType === 'checkers') {
+    moveResult = makeCheckersMove(room.board, data.fromIndex, data.toIndex, player, room.mustMoveIndex);
+  } else if (room.gameType === 'gomoku') {
+    moveResult = makeGomokuMove(room.board, index, player);
+  } else if (room.gameType === 'mancala') {
+    moveResult = makeMancalaMove(room.board, index, player);
+  } else if (room.gameType === 'dotsboxes') {
+    moveResult = makeDotsBoxesMove(room.board, index, player);
+  } else if (room.gameType === 'nim') {
+    moveResult = makeNimMove(room.board, index, player);
+  } else if (room.gameType === 'uttt') {
+    const utttState = { board: room.board, activeBoard: room.activeBoard, subBoardWinners: room.subBoardWinners };
+    moveResult = makeUTTTMove(utttState, index, player);
+  } else if (room.gameType === 'chain') {
+    moveResult = makeChainMove(room.board, index, player, room.turnOrder, room.chainMoveCount);
+  } else if (room.gameType === 'memory') {
+    moveResult = makeMemoryMove(room.memoryState, index, player);
+  } else {
+    moveResult = makeTicTacToeMove(room.board, index, player);
+  }
+
+  if (!moveResult.valid) return false;
+
+  // Update board for most games
+  if (room.gameType === 'memory') {
+    room.memoryState = {
+      cards: moveResult.cards,
+      revealed: moveResult.revealed,
+      matchedBy: moveResult.matchedBy,
+      flippedIndices: moveResult.flippedIndices,
+      scores: moveResult.scores,
+      turnOrder: moveResult.turnOrder,
+      moveCount: moveResult.moveCount,
+    };
+  } else {
+    room.board = moveResult.board;
+  }
+
+  if (room.gameType === 'checkers') {
+    room.mustMoveIndex = moveResult.mustMoveIndex || null;
+  }
+  if (room.gameType === 'uttt') {
+    room.activeBoard = moveResult.activeBoard;
+    room.subBoardWinners = moveResult.subBoardWinners;
+  }
+  if (room.gameType === 'chain') {
+    room.turnOrder = moveResult.turnOrder;
+    room.chainMoveCount = moveResult.moveCount;
+  }
+
+  const result = moveResult.result;
+
+  if (result) {
+    handleGameResult(room, result, roomCode);
+    clearTurnTimer(roomCode);
+    io.to(roomCode).emit("gameUpdate", room);
+    return true;
+  }
+
+  if (room.gameType === 'checkers') {
+    room.turn = moveResult.nextTurn || (player === "b" ? "r" : "b");
+  } else {
+    room.turn = moveResult.nextTurn || (player === "X" ? "O" : "X");
+  }
+
+  // Handle memory flip-back on server
+  if (room.gameType === 'memory' && moveResult.needsFlipBack) {
+    const flipIndices = moveResult.flipBackIndices;
+    const nextTurn = moveResult.nextTurn;
+    // Emit the current state with flipped cards visible
+    io.to(roomCode).emit("gameUpdate", room);
+    // After delay, flip back
+    setTimeout(() => {
+      const currentRoom = lobbies[lobbyCode]?.rooms[roomCode];
+      if (currentRoom && currentRoom.memoryState) {
+        const newRevealed = [...currentRoom.memoryState.revealed];
+        for (const idx of flipIndices) {
+          if (newRevealed[idx] === 'flipped') newRevealed[idx] = 'hidden';
+        }
+        currentRoom.memoryState.revealed = newRevealed;
+        currentRoom.memoryState.flippedIndices = [];
+        currentRoom.turn = nextTurn;
+        io.to(roomCode).emit("gameUpdate", currentRoom);
+        startTurnTimer(lobbyCode, roomCode);
+        scheduleBotMove(lobbyCode, roomCode);
+      }
+    }, 1500);
+    return true; // Don't emit gameUpdate again below
+  }
+
+  startTurnTimer(lobbyCode, roomCode);
+  io.to(roomCode).emit("gameUpdate", room);
+  scheduleBotMove(lobbyCode, roomCode);
+  return true;
+};
+
+// ── Schedule a bot move if the current turn belongs to a bot ──
+const scheduleBotMove = (lobbyCode, roomCode) => {
+  const room = lobbies[lobbyCode]?.rooms[roomCode];
+  if (!room || room.result) return;
+
+  // Find if current turn belongs to a bot
+  const botEntry = Object.entries(room.players).find(([sid, role]) =>
+    sid.startsWith('bot-') && role === room.turn
+  );
+  if (!botEntry) return;
+
+  const [botSocketId] = botEntry;
+  const botInfo = room.bots?.[botSocketId];
+  if (!botInfo) return;
+
+  const delay = botInfo.difficulty === 'easy' ? 1200 : botInfo.difficulty === 'medium' ? 800 : 500;
+
+  setTimeout(() => {
+    const currentRoom = lobbies[lobbyCode]?.rooms[roomCode];
+    if (!currentRoom || currentRoom.result) return;
+
+    const move = getBotMove(currentRoom.gameType, currentRoom, botInfo.role, botInfo.difficulty);
+    if (!move) return;
+
+    executeMove(lobbyCode, roomCode, move.index, botInfo.role, move.data);
+  }, delay);
 };
 
 io.on('connection', (socket) => {
@@ -358,108 +493,85 @@ io.on('connection', (socket) => {
     broadcastLobbyState(lobbyCode);
   });
 
+  // Add a bot to a room
+  socket.on("addBot", ({ difficulty }, callback) => {
+    const lobbyCode = socketToLobby[socket.id];
+    if (!lobbyCode) return callback({ error: "Not in a lobby" });
+
+    const lobby = lobbies[lobbyCode];
+    if (!lobby) return callback({ error: "Lobby not found" });
+
+    // Find which room the player is in
+    let roomCode = null;
+    let room = null;
+    for (const [rc, r] of Object.entries(lobby.rooms)) {
+      if (r.players[socket.id]) {
+        roomCode = rc;
+        room = r;
+        break;
+      }
+    }
+    if (!room) return callback({ error: "You are not in a room" });
+
+    const maxPlayers = (GAME_CONFIG[room.gameType] || { maxPlayers: 2 }).maxPlayers;
+    if (Object.keys(room.players).length >= maxPlayers) {
+      return callback({ error: "Room is full" });
+    }
+
+    const botSocketId = `bot-${difficulty}-${Date.now()}`;
+    const playerCount = Object.keys(room.players).length;
+
+    // Assign role using same logic as joinRoom
+    let assignedRole;
+    if (room.gameType === 'checkers') {
+      assignedRole = 'r';
+    } else if (room.gameType === 'chain') {
+      assignedRole = CHAIN_COLORS[playerCount];
+      room.turnOrder = room.turnOrder || [];
+      room.turnOrder.push(assignedRole);
+    } else if (room.gameType === 'memory') {
+      if (playerCount === 1) assignedRole = 'O';
+      else if (playerCount === 2) assignedRole = 'P3';
+      else assignedRole = 'P4';
+      // Rebuild memory state with new player count
+      const allRoles = [...Object.values(room.players), assignedRole];
+      const memState = getInitialMemoryState(allRoles.length);
+      memState.turnOrder = allRoles;
+      memState.scores = {};
+      for (const r of allRoles) memState.scores[r] = 0;
+      room.memoryState = memState;
+      room.turn = memState.turnOrder[0];
+    } else {
+      assignedRole = 'O';
+    }
+
+    const diffLabel = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+    const botName = `Bot (${diffLabel})`;
+
+    room.players[botSocketId] = assignedRole;
+    room.playerNames.push(botName);
+    if (!room.bots) room.bots = {};
+    room.bots[botSocketId] = { role: assignedRole, difficulty, name: botName };
+
+    console.log(`Bot ${botName} added to room ${roomCode}`);
+
+    io.to(roomCode).emit("gameStart", room);
+    // Start timer when we reach minimum 2 players
+    if (Object.keys(room.players).length >= 2) {
+      startTurnTimer(lobbyCode, roomCode);
+    }
+    broadcastLobbyState(lobbyCode);
+    callback({ botName });
+
+    // If it's the bot's turn, schedule a move
+    scheduleBotMove(lobbyCode, roomCode);
+  });
+
   // Make a move
   socket.on("makeMove", ({ code, index, player, data }) => {
     const lobbyCode = socketToLobby[socket.id];
     if (!lobbyCode) return;
-
-    const room = lobbies[lobbyCode]?.rooms[code];
-    if (!room || room.turn !== player) return;
-
-    let moveResult;
-    if (room.gameType === 'connect4') {
-      moveResult = makeConnect4Move(room.board, index, player); // index is column for Connect 4
-    } else if (room.gameType === 'othello') {
-      moveResult = makeOthelloMove(room.board, index, player);
-    } else if (room.gameType === 'checkers') {
-      moveResult = makeCheckersMove(room.board, data.fromIndex, data.toIndex, player, room.mustMoveIndex);
-    } else if (room.gameType === 'gomoku') {
-      moveResult = makeGomokuMove(room.board, index, player);
-    } else if (room.gameType === 'mancala') {
-      moveResult = makeMancalaMove(room.board, index, player);
-    } else if (room.gameType === 'dotsboxes') {
-      moveResult = makeDotsBoxesMove(room.board, index, player);
-    } else if (room.gameType === 'nim') {
-      moveResult = makeNimMove(room.board, index, player);
-    } else if (room.gameType === 'uttt') {
-      const utttState = { board: room.board, activeBoard: room.activeBoard, subBoardWinners: room.subBoardWinners };
-      moveResult = makeUTTTMove(utttState, index, player);
-    } else if (room.gameType === 'chain') {
-      moveResult = makeChainMove(room.board, index, player, room.turnOrder, room.chainMoveCount);
-    } else if (room.gameType === 'memory') {
-      moveResult = makeMemoryMove(room.memoryState, index, player);
-    } else {
-      moveResult = makeTicTacToeMove(room.board, index, player);
-    }
-
-    if (moveResult.valid) {
-      // Update board for most games
-      if (room.gameType === 'memory') {
-        room.memoryState = {
-          cards: moveResult.cards,
-          revealed: moveResult.revealed,
-          matchedBy: moveResult.matchedBy,
-          flippedIndices: moveResult.flippedIndices,
-          scores: moveResult.scores,
-          turnOrder: moveResult.turnOrder,
-          moveCount: moveResult.moveCount,
-        };
-      } else {
-        room.board = moveResult.board;
-      }
-
-      if (room.gameType === 'checkers') {
-        room.mustMoveIndex = moveResult.mustMoveIndex || null;
-      }
-      if (room.gameType === 'uttt') {
-        room.activeBoard = moveResult.activeBoard;
-        room.subBoardWinners = moveResult.subBoardWinners;
-      }
-      if (room.gameType === 'chain') {
-        room.turnOrder = moveResult.turnOrder;
-        room.chainMoveCount = moveResult.moveCount;
-      }
-
-      const result = moveResult.result;
-
-      if (result) {
-        handleGameResult(room, result, code);
-        clearTurnTimer(code);
-      } else {
-        if (room.gameType === 'checkers') {
-          room.turn = moveResult.nextTurn || (player === "b" ? "r" : "b");
-        } else {
-          room.turn = moveResult.nextTurn || (player === "X" ? "O" : "X");
-        }
-
-        // Handle memory flip-back on server
-        if (room.gameType === 'memory' && moveResult.needsFlipBack) {
-          const flipIndices = moveResult.flipBackIndices;
-          const nextTurn = moveResult.nextTurn;
-          // Emit the current state with flipped cards visible
-          io.to(code).emit("gameUpdate", room);
-          // After delay, flip back
-          setTimeout(() => {
-            const currentRoom = lobbies[lobbyCode]?.rooms[code];
-            if (currentRoom && currentRoom.memoryState) {
-              const newRevealed = [...currentRoom.memoryState.revealed];
-              for (const idx of flipIndices) {
-                if (newRevealed[idx] === 'flipped') newRevealed[idx] = 'hidden';
-              }
-              currentRoom.memoryState.revealed = newRevealed;
-              currentRoom.memoryState.flippedIndices = [];
-              currentRoom.turn = nextTurn;
-              io.to(code).emit("gameUpdate", currentRoom);
-              startTurnTimer(lobbyCode, code);
-            }
-          }, 1500);
-          return; // Don't emit gameUpdate again below
-        }
-
-        startTurnTimer(lobbyCode, code);
-      }
-      io.to(code).emit("gameUpdate", room);
-    }
+    executeMove(lobbyCode, code, index, player, data);
   });
 
   // Restart game (local mode)
@@ -495,6 +607,7 @@ io.on('connection', (socket) => {
       io.to(code).emit("gameUpdate", room);
       if (Object.keys(room.players).length >= 2) {
         startTurnTimer(lobbyCode, code);
+        scheduleBotMove(lobbyCode, code);
       }
     }
   });
@@ -509,7 +622,17 @@ io.on('connection', (socket) => {
     if (!room.rematchRequests.includes(socket.id)) {
       room.rematchRequests.push(socket.id);
     }
-    if (room.rematchRequests.length >= 2) {
+    // Auto-add bot rematch requests
+    if (room.bots) {
+      for (const botId of Object.keys(room.bots)) {
+        if (!room.rematchRequests.includes(botId)) {
+          room.rematchRequests.push(botId);
+        }
+      }
+    }
+    const humanCount = Object.keys(room.players).filter(id => !id.startsWith('bot-')).length;
+    const totalPlayers = Object.keys(room.players).length;
+    if (room.rematchRequests.length >= totalPlayers || (humanCount <= 1 && room.rematchRequests.length >= 2)) {
       if (room.seriesWinner) {
         // Reset score with correct keys for the game type
         if (room.gameType === 'chain') {
@@ -547,6 +670,7 @@ io.on('connection', (socket) => {
       }
       io.to(code).emit("gameUpdate", room);
       startTurnTimer(lobbyCode, code);
+      scheduleBotMove(lobbyCode, code);
     } else {
       io.to(code).emit("rematchRequested", { requesterId: socket.id });
     }
@@ -620,6 +744,16 @@ io.on('connection', (socket) => {
       const playerName = lobby.players.find(p => p.id === socket.id)?.name;
       delete room.players[socket.id];
       if (playerName) room.playerNames = room.playerNames.filter(n => n !== playerName);
+
+      // Clean up bots when a human leaves
+      if (room.bots) {
+        for (const botId of Object.keys(room.bots)) {
+          const botInfo = room.bots[botId];
+          delete room.players[botId];
+          if (botInfo.name) room.playerNames = room.playerNames.filter(n => n !== botInfo.name);
+        }
+        room.bots = {};
+      }
 
       if (Object.keys(room.players).length === 0) {
         clearTurnTimer(roomCode);
@@ -803,6 +937,15 @@ const handleDisconnect = (socket) => {
         if (!room) continue;
         delete room.players[socket.id];
         if (playerName) room.playerNames = room.playerNames.filter(n => n !== playerName);
+        // Clean up bots when a human disconnects permanently
+        if (room.bots) {
+          for (const botId of Object.keys(room.bots)) {
+            const botInfo = room.bots[botId];
+            delete room.players[botId];
+            if (botInfo.name) room.playerNames = room.playerNames.filter(n => n !== botInfo.name);
+          }
+          room.bots = {};
+        }
         if (Object.keys(room.players).length === 0) {
           clearTurnTimer(roomCode);
           delete lobbyStill.rooms[roomCode];
