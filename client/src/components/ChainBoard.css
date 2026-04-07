@@ -1,4 +1,4 @@
-/* Chain Reaction Board — 10x8 grid */
+/* Chain Reaction Board — 9x9 grid */
 
 .chain-board-wrapper {
     display: flex;
@@ -26,13 +26,13 @@
 
 .chain-board {
     display: grid;
-    grid-template-columns: repeat(8, 1fr);
-    grid-template-rows: repeat(10, 1fr);
+    grid-template-columns: repeat(9, 1fr);
+    grid-template-rows: repeat(9, 1fr);
     gap: 2px;
     background-color: var(--accent, #7c3aed);
     width: 100%;
-    max-width: 480px;
-    aspect-ratio: 8 / 10;
+    max-width: 800px;
+    aspect-ratio: 1 / 1;
     margin: 0 auto;
     border-radius: 8px;
     overflow: hidden;
@@ -203,7 +203,7 @@
 /* Responsive — tablets */
 @media (max-width: 600px) {
     .chain-board {
-        max-width: 400px;
+        max-width: 500px;
         gap: 1px;
         border-width: 2px;
     }
@@ -232,7 +232,7 @@
 /* Responsive — phones */
 @media (max-width: 400px) {
     .chain-board {
-        max-width: 320px;
+        max-width: 350px;
     }
 
     .chain-board-wrapper {
