@@ -17,6 +17,9 @@ const GAMES = [
     { id: 'uttt', name: 'Ultimate Tic Tac Toe', desc: "Tic Tac Toe... inception style!", route: 'ultimate-tic-tac-toe', modes: ['pnp', '2p'] },
     { id: 'chain', name: 'Chain Reaction', desc: 'Place atoms, cause explosions, dominate the grid!', route: 'chain-reaction', modes: ['pnp', '2p', 'mp'] },
     { id: 'memory', name: 'Memory', desc: 'Flip cards and find matching pairs!', route: 'memory', modes: ['pnp', '2p', 'mp'] },
+    { id: 'scribble', name: 'Scribble', desc: 'Draw and guess the word!', route: 'scribble', modes: ['mp'] },
+    { id: 'imposter', name: 'Imposter Word', desc: 'Find the imposter among your friends!', route: 'imposter-word', modes: ['mp'] },
+    { id: 'wordle', name: 'Wordle', desc: 'Guess the 5-letter word in 6 tries!', route: 'wordle', modes: ['pnp', '2p'] },
 ];
 
 const CATEGORIES = [

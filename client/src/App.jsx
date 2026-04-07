@@ -30,6 +30,9 @@ function App() {
                 <Route path="/game/ultimate-tic-tac-toe/:roomCode" element={<Game />} />
                 <Route path="/game/chain-reaction/:roomCode" element={<Game />} />
                 <Route path="/game/memory/:roomCode" element={<Game />} />
+                <Route path="/game/scribble/:roomCode" element={<Game />} />
+                <Route path="/game/imposter-word/:roomCode" element={<Game />} />
+                <Route path="/game/wordle/:roomCode" element={<Game />} />
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

@@ -12,6 +12,9 @@ const { getInitialUTTTState, makeUTTTMove } = require('./utils/utttLogic');
 const { getInitialChainBoard, makeChainMove, CHAIN_COLORS } = require('./utils/chainLogic');
 const { getInitialMemoryState, makeMemoryMove } = require('./utils/memoryLogic');
 const { getBotMove } = require('./utils/botLogic');
+const { getInitialScribbleState, checkGuess: scribbleCheckGuess, nextRound: scribbleNextRound } = require('./utils/scribbleLogic');
+const { getInitialImposterState, submitClue, submitVote, revealResults, nextRound: imposterNextRound } = require('./utils/imposterLogic');
+const { getInitialWordleState, submitGuess: wordleSubmitGuess } = require('./utils/wordleLogic');
 
 const app = express();
 app.use(cors());
@@ -28,6 +31,9 @@ const GAME_CONFIG = {
     uttt: { maxPlayers: 2 },
     chain: { maxPlayers: 6 },
     memory: { maxPlayers: 4 },
+    scribble: { maxPlayers: 8 },
+    imposter: { maxPlayers: 10 },
+    wordle: { maxPlayers: 2 },
 };
 
 const server = http.createServer(app);
@@ -121,6 +127,7 @@ const getBoardForGameType = (gameType) => {
   if (gameType === 'uttt') return Array(81).fill(null);
   if (gameType === 'chain') return getInitialChainBoard();
   if (gameType === 'memory') return null; // Memory uses memoryState instead
+  if (gameType === 'scribble' || gameType === 'imposter' || gameType === 'wordle') return null;
   return Array(9).fill(null);
 };
 
@@ -402,6 +409,12 @@ io.on('connection', (socket) => {
       room.turn = memState.turnOrder[0];
     }
 
+    // Word game state initialization
+    if (gameType === 'scribble' || gameType === 'imposter' || gameType === 'wordle') {
+      room.wordGameState = null; // Will be initialized when game starts
+      room.board = null;
+    }
+
     socket.join(roomCode);
     console.log(`Room ${roomCode} (${gameType}) created in lobby ${lobbyCode} by ${playerName}`);
 
@@ -487,8 +500,37 @@ io.on('connection', (socket) => {
     callback({ code: roomCode, role: assignedRole, gameData });
     io.to(roomCode).emit("gameStart", room);
     // Start timer when we reach minimum 2 players
-    if (Object.keys(room.players).length >= 2) {
-      startTurnTimer(lobbyCode, roomCode);
+    const playerCount2 = Object.keys(room.players).length;
+    if (playerCount2 >= 2) {
+      // Auto-start word games when enough players join
+      if (room.gameType === 'scribble' || room.gameType === 'imposter' || room.gameType === 'wordle') {
+        const playerIds = Object.keys(room.players);
+        const pNames = {};
+        for (const pid of playerIds) {
+          const lobbyPlayer = lobby.players.find(p => p.id === pid);
+          pNames[pid] = lobbyPlayer?.name || 'Unknown';
+        }
+        if (room.gameType === 'scribble') {
+          room.wordGameState = getInitialScribbleState(playerIds, pNames);
+          io.to(roomCode).emit('scribbleStateUpdate', room.wordGameState);
+        } else if (room.gameType === 'imposter') {
+          room.wordGameState = getInitialImposterState(playerIds, pNames);
+          // Send each player their own view (with their personal word)
+          for (const pid of playerIds) {
+            const playerSocket = io.sockets.sockets.get(pid);
+            if (playerSocket) {
+              playerSocket.emit('imposterStateUpdate', room.wordGameState);
+            }
+          }
+        } else if (room.gameType === 'wordle') {
+          room.wordGameState = getInitialWordleState();
+          // Send state without the word to players
+          const safeState = { ...room.wordGameState, word: undefined };
+          io.to(roomCode).emit('wordleStateUpdate', { state: safeState });
+        }
+      } else {
+        startTurnTimer(lobbyCode, roomCode);
+      }
     }
     broadcastLobbyState(lobbyCode);
   });
@@ -821,6 +863,242 @@ io.on('connection', (socket) => {
     if (!lobbyCode) return callback({ chatHistory: [] });
     const room = lobbies[lobbyCode]?.rooms[roomCode];
     callback({ chatHistory: room?.chatHistory || [] });
+  });
+
+  // ── Scribble Events ──
+  socket.on("scribbleDraw", (data) => {
+    // Broadcast drawing data to other players in the room
+    socket.to(data.room).emit("scribbleDrawUpdate", data);
+  });
+
+  socket.on("scribbleGuess", ({ room: roomCode, guess, playerId, playerName }) => {
+    const lobbyCode = socketToLobby[socket.id];
+    if (!lobbyCode) return;
+    const room = lobbies[lobbyCode]?.rooms[roomCode];
+    if (!room || !room.wordGameState) return;
+
+    const result = scribbleCheckGuess(room.wordGameState, guess, playerId);
+
+    if (result.correct) {
+      io.to(roomCode).emit("scribbleGuessResult", {
+        playerName,
+        message: `${playerName} guessed the word!`,
+        correct: true,
+      });
+      // Update state
+      io.to(roomCode).emit("scribbleStateUpdate", room.wordGameState);
+
+      // Check if all guessers have guessed
+      const totalPlayers = room.wordGameState.drawOrder.length;
+      if (room.wordGameState.guessedPlayers.length >= totalPlayers - 1) {
+        // All players guessed, move to next round
+        const word = room.wordGameState.word;
+        io.to(roomCode).emit("scribbleRoundEnd", { word });
+        const nextState = scribbleNextRound(room.wordGameState);
+        if (nextState.gameOver) {
+          io.to(roomCode).emit("scribbleGameEnd", nextState);
+          room.wordGameState = null;
+        } else {
+          room.wordGameState = nextState;
+          io.to(roomCode).emit("scribbleStateUpdate", room.wordGameState);
+        }
+      }
+    } else if (!result.alreadyGuessed) {
+      io.to(roomCode).emit("scribbleGuessResult", {
+        playerName,
+        message: guess,
+        correct: false,
+      });
+    }
+  });
+
+  socket.on("scribbleStart", ({ room: roomCode }) => {
+    const lobbyCode = socketToLobby[socket.id];
+    if (!lobbyCode) return;
+    const lobby = lobbies[lobbyCode];
+    const room = lobby?.rooms[roomCode];
+    if (!room) return;
+
+    const playerIds = Object.keys(room.players);
+    const pNames = {};
+    for (const pid of playerIds) {
+      const lobbyPlayer = lobby.players.find(p => p.id === pid);
+      pNames[pid] = lobbyPlayer?.name || 'Unknown';
+    }
+    room.wordGameState = getInitialScribbleState(playerIds, pNames);
+    io.to(roomCode).emit("scribbleStateUpdate", room.wordGameState);
+  });
+
+  socket.on("scribbleNextRound", ({ room: roomCode }) => {
+    const lobbyCode = socketToLobby[socket.id];
+    if (!lobbyCode) return;
+    const room = lobbies[lobbyCode]?.rooms[roomCode];
+    if (!room || !room.wordGameState) return;
+
+    const word = room.wordGameState.word;
+    io.to(roomCode).emit("scribbleRoundEnd", { word });
+    const nextState = scribbleNextRound(room.wordGameState);
+    if (nextState.gameOver) {
+      io.to(roomCode).emit("scribbleGameEnd", nextState);
+      room.wordGameState = null;
+    } else {
+      room.wordGameState = nextState;
+      io.to(roomCode).emit("scribbleStateUpdate", room.wordGameState);
+    }
+  });
+
+  // ── Imposter Word Events ──
+  socket.on("imposterStart", ({ room: roomCode }) => {
+    const lobbyCode = socketToLobby[socket.id];
+    if (!lobbyCode) return;
+    const lobby = lobbies[lobbyCode];
+    const room = lobby?.rooms[roomCode];
+    if (!room) return;
+
+    const playerIds = Object.keys(room.players);
+    const pNames = {};
+    for (const pid of playerIds) {
+      const lobbyPlayer = lobby.players.find(p => p.id === pid);
+      pNames[pid] = lobbyPlayer?.name || 'Unknown';
+    }
+    room.wordGameState = getInitialImposterState(playerIds, pNames);
+    // Send state to each player
+    for (const pid of playerIds) {
+      const playerSocket = io.sockets.sockets.get(pid);
+      if (playerSocket) {
+        playerSocket.emit('imposterStateUpdate', room.wordGameState);
+      }
+    }
+  });
+
+  socket.on("imposterClue", ({ room: roomCode, playerId, clue }) => {
+    const lobbyCode = socketToLobby[socket.id];
+    if (!lobbyCode) return;
+    const room = lobbies[lobbyCode]?.rooms[roomCode];
+    if (!room || !room.wordGameState) return;
+
+    const newState = submitClue(room.wordGameState, playerId, clue);
+    if (!newState) return;
+
+    room.wordGameState = newState;
+    // Broadcast to all players
+    const playerIds = Object.keys(room.players);
+    for (const pid of playerIds) {
+      const playerSocket = io.sockets.sockets.get(pid);
+      if (playerSocket) {
+        playerSocket.emit('imposterStateUpdate', room.wordGameState);
+      }
+    }
+  });
+
+  socket.on("imposterVote", ({ room: roomCode, playerId, votedForId }) => {
+    const lobbyCode = socketToLobby[socket.id];
+    if (!lobbyCode) return;
+    const room = lobbies[lobbyCode]?.rooms[roomCode];
+    if (!room || !room.wordGameState) return;
+
+    const newState = submitVote(room.wordGameState, playerId, votedForId);
+    if (!newState) return;
+
+    room.wordGameState = newState;
+
+    if (newState.phase === 'reveal') {
+      const results = revealResults(newState);
+      room.wordGameState.scores = results.scores;
+      io.to(roomCode).emit('imposterReveal', results);
+
+      // Check if game is over (all rounds played)
+      if (newState.round >= newState.totalRounds) {
+        io.to(roomCode).emit('imposterGameEnd', { scores: results.scores });
+      }
+    }
+
+    // Broadcast updated state
+    const playerIds = Object.keys(room.players);
+    for (const pid of playerIds) {
+      const playerSocket = io.sockets.sockets.get(pid);
+      if (playerSocket) {
+        playerSocket.emit('imposterStateUpdate', room.wordGameState);
+      }
+    }
+  });
+
+  socket.on("imposterNextRound", ({ room: roomCode }) => {
+    const lobbyCode = socketToLobby[socket.id];
+    if (!lobbyCode) return;
+    const room = lobbies[lobbyCode]?.rooms[roomCode];
+    if (!room || !room.wordGameState) return;
+
+    const playerIds = Object.keys(room.players);
+    const newState = imposterNextRound(room.wordGameState, playerIds);
+    room.wordGameState = newState;
+
+    for (const pid of playerIds) {
+      const playerSocket = io.sockets.sockets.get(pid);
+      if (playerSocket) {
+        playerSocket.emit('imposterStateUpdate', room.wordGameState);
+      }
+    }
+  });
+
+  socket.on("imposterPhaseAdvance", ({ room: roomCode }) => {
+    const lobbyCode = socketToLobby[socket.id];
+    if (!lobbyCode) return;
+    const room = lobbies[lobbyCode]?.rooms[roomCode];
+    if (!room || !room.wordGameState) return;
+
+    // Only advance from discussion to voting
+    if (room.wordGameState.phase === 'discussion') {
+      room.wordGameState.phase = 'voting';
+      const playerIds = Object.keys(room.players);
+      for (const pid of playerIds) {
+        const playerSocket = io.sockets.sockets.get(pid);
+        if (playerSocket) {
+          playerSocket.emit('imposterStateUpdate', room.wordGameState);
+        }
+      }
+    }
+  });
+
+  socket.on("imposterChat", (data) => {
+    const lobbyCode = socketToLobby[socket.id];
+    if (!lobbyCode) return;
+    const room = lobbies[lobbyCode]?.rooms[data.room];
+    if (!room) return;
+    io.to(data.room).emit("imposterChat", { sender: data.sender, message: data.message });
+  });
+
+  // ── Wordle Events ──
+  socket.on("wordleStart", ({ room: roomCode }) => {
+    const lobbyCode = socketToLobby[socket.id];
+    if (!lobbyCode) return;
+    const room = lobbies[lobbyCode]?.rooms[roomCode];
+    if (!room) return;
+
+    room.wordGameState = getInitialWordleState();
+    const safeState = { ...room.wordGameState, word: undefined };
+    io.to(roomCode).emit("wordleStateUpdate", { state: safeState });
+  });
+
+  socket.on("wordleGuess", ({ roomCode, guess }) => {
+    const lobbyCode = socketToLobby[socket.id];
+    if (!lobbyCode) return;
+    const room = lobbies[lobbyCode]?.rooms[roomCode];
+    if (!room || !room.wordGameState) return;
+
+    const result = wordleSubmitGuess(room.wordGameState, guess);
+    if (!result.valid) {
+      socket.emit("wordleStateUpdate", { state: { ...room.wordGameState, word: undefined }, reason: result.reason });
+      return;
+    }
+
+    room.wordGameState = result.newState;
+    // Send state to all players; include word only if game is over
+    const stateToSend = { ...result.newState };
+    if (!stateToSend.result) {
+      stateToSend.word = undefined;
+    }
+    io.to(roomCode).emit("wordleStateUpdate", { state: stateToSend, feedback: result.feedback });
   });
 
   // F11: Reconnect to Lobby
