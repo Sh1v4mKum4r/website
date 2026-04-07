@@ -21,6 +21,9 @@ import { getInitialNimBoard, makeNimMove } from '../utils/nimLogic';
 import { getInitialUTTTState, makeUTTTMove } from '../utils/utttLogic';
 import { getInitialChainBoard, makeChainMove, CHAIN_COLORS } from '../utils/chainLogic';
 import { getInitialMemoryState, makeMemoryMove } from '../utils/memoryLogic';
+import ScribbleGame from '../components/ScribbleGame';
+import ImposterGame from '../components/ImposterGame';
+import WordleGame from '../components/WordleGame';
 import Chat from '../components/Chat';
 import { playMove, playWin, playLose, playJoin, playTimeout, playTick } from '../utils/sounds';
 import './Game.css';
@@ -31,7 +34,9 @@ function Game() {
   const navigate = useNavigate();
 
   const initialGameType = location.state?.gameType || 'tictactoe';
+  const isWordGame = ['scribble', 'imposter', 'wordle'].includes(initialGameType);
   const getInitialBoard = (gType) => {
+    if (['scribble', 'imposter', 'wordle'].includes(gType)) return null;
     if (gType === 'connect4') return Array(42).fill(null);
     if (gType === 'othello') {
       const b = Array(64).fill(null);
@@ -728,6 +733,39 @@ function Game() {
           "Remember where cards are! The player with the most pairs wins.",
           "Supports 2-4 players in multiplayer mode."
         ]
+      },
+      scribble: {
+        title: "Scribble (Draw & Guess)",
+        rules: [
+          "Players take turns drawing a word on the canvas.",
+          "Other players try to guess the word by typing in the chat.",
+          "Correct guesses earn points -- earlier guessers score more!",
+          "The drawer also earns points for each correct guess.",
+          "Multiple rounds with shuffled draw order. Highest score wins!",
+          "Supports up to 8 players."
+        ]
+      },
+      imposter: {
+        title: "Imposter Word",
+        rules: [
+          "All players receive the same word -- except the imposter, who gets a different (but related) word.",
+          "Each player gives a one-word clue related to their word.",
+          "After all clues, discuss who you think the imposter is.",
+          "Vote for who you think has the different word.",
+          "If the imposter is caught, civilians score. If not, the imposter scores!",
+          "Supports 3-10 players."
+        ]
+      },
+      wordle: {
+        title: "Wordle",
+        rules: [
+          "Guess the hidden 5-letter word in 6 tries.",
+          "After each guess, tiles change color to show how close you are.",
+          "Green = correct letter in the correct position.",
+          "Yellow = correct letter but in the wrong position.",
+          "Gray = letter is not in the word at all.",
+          "Use the on-screen keyboard or your physical keyboard to type guesses."
+        ]
       }
     };
 
@@ -748,7 +786,7 @@ function Game() {
 
   return (
     <div className="game-container">
-      <h2>{gameType === 'connect4' ? 'Connect 4' : gameType === 'othello' ? 'Othello' : gameType === 'checkers' ? 'Checkers' : gameType === 'gomoku' ? 'Gomoku' : gameType === 'mancala' ? 'Mancala' : gameType === 'dotsboxes' ? 'Dots & Boxes' : gameType === 'nim' ? 'Nim' : gameType === 'uttt' ? 'Ultimate Tic Tac Toe' : gameType === 'chain' ? 'Chain Reaction' : gameType === 'memory' ? 'Memory' : 'Tic Tac Toe'}</h2>
+      <h2>{gameType === 'connect4' ? 'Connect 4' : gameType === 'othello' ? 'Othello' : gameType === 'checkers' ? 'Checkers' : gameType === 'gomoku' ? 'Gomoku' : gameType === 'mancala' ? 'Mancala' : gameType === 'dotsboxes' ? 'Dots & Boxes' : gameType === 'nim' ? 'Nim' : gameType === 'uttt' ? 'Ultimate Tic Tac Toe' : gameType === 'chain' ? 'Chain Reaction' : gameType === 'memory' ? 'Memory' : gameType === 'scribble' ? 'Scribble' : gameType === 'imposter' ? 'Imposter Word' : gameType === 'wordle' ? 'Wordle' : 'Tic Tac Toe'}</h2>
       {isSpectator && <div className="spectator-badge">👁 Spectating</div>}
       {!isLocal && !isSpectator && myName && <div className="player-names">Playing as {myName} ({myRole === 'b' ? 'Black' : myRole === 'r' ? 'Red' : myRole})</div>}
       {isSpectator && playerNames.length >= 2 && (
@@ -767,112 +805,152 @@ function Game() {
         </div>
       )}
 
-      <div id="scoreboard">
-        {gameType === 'othello' ? (
-          `Black (X): ${board.filter(c => c === 'X').length} | White (O): ${board.filter(c => c === 'O').length}`
-        ) : gameType === 'checkers' ? (
-          `Black: ${board.filter(c => c && c.toLowerCase() === 'b').length} | Red: ${board.filter(c => c && c.toLowerCase() === 'r').length}`
-        ) : gameType === 'mancala' ? (
-          `X Store: ${board[6]} | O Store: ${board[13]}`
-        ) : gameType === 'dotsboxes' ? (
-          `X Boxes: ${board.slice(60).filter(c => c === 'X').length} | O Boxes: ${board.slice(60).filter(c => c === 'O').length}`
-        ) : gameType === 'nim' ? (
-          `Stones left: ${board.filter(c => c === 'stone').length}`
-        ) : gameType === 'memory' && memoryState?.scores ? (
-          Object.entries(memoryState.scores).map(([p, s]) => `${p}: ${s}`).join(' | ')
-        ) : gameType === 'chain' && turnOrder ? (
-          `Current: ${turn} | Players: ${turnOrder.join(', ')}`
-        ) : (
-          `X: ${score.X} | O: ${score.O}`
-        )}
-      </div>
-
-      {/* F4: Timer */}
-      {timeLeft !== null && !result && (
-        <div className={`timer ${timeLeft <= 5 ? 'critical' : timeLeft <= 10 ? 'warning' : ''}`}>
-          ⏱ {timeLeft}s
-          {isLocal && (
-            <button className="timer-pause-btn" onClick={() => setTimerPaused(!timerPaused)}>
-              {timerPaused ? '▶' : '⏸'}
-            </button>
+      {/* Word Games: render custom component + exit button instead of standard board layout */}
+      {['scribble', 'imposter', 'wordle'].includes(gameType) ? (
+        <div className="word-game-wrapper">
+          {gameType === 'scribble' && (
+            <ScribbleGame
+              roomCode={roomCode}
+              socket={socket}
+              playerName={myName || 'Player'}
+              playerId={socket.id}
+              players={playerNames}
+              isLocal={isLocal}
+            />
           )}
+          {gameType === 'imposter' && (
+            <ImposterGame
+              roomCode={roomCode}
+              socket={socket}
+              playerName={myName || 'Player'}
+              playerId={socket.id}
+              players={playerNames}
+              isLocal={isLocal}
+            />
+          )}
+          {gameType === 'wordle' && (
+            <WordleGame
+              roomCode={roomCode}
+              socket={socket}
+              playerName={myName || 'Player'}
+              playerId={socket.id}
+              isLocal={isLocal}
+            />
+          )}
+          <div className="controls">
+            <button onClick={handleExit}>Exit to Lobby</button>
+          </div>
         </div>
-      )}
-      {timerPaused && isLocal && !result && (
-        <div className="timer-paused-badge">PAUSED</div>
-      )}
-
-      {gameType === 'connect4' ? (
-        <Connect4Board board={board} onColumnClick={handleCellClick} winningLine={result?.line} turn={turn} />
-      ) : gameType === 'othello' ? (
-        <OthelloBoard board={board} onCellClick={handleCellClick} turn={turn} />
-      ) : gameType === 'checkers' ? (
-        <CheckersBoard board={board} onMove={handleCheckersMove} turn={turn} myRole={myRole} isLocal={isLocal} />
-      ) : gameType === 'gomoku' ? (
-        <GomokuBoard board={board} onCellClick={handleCellClick} winningLine={result?.line} turn={turn} />
-      ) : gameType === 'mancala' ? (
-        <MancalaBoard board={board} onCellClick={handleCellClick} turn={turn} myRole={myRole} isLocal={isLocal} />
-      ) : gameType === 'dotsboxes' ? (
-        <DotsBoxesBoard board={board} onCellClick={handleCellClick} turn={turn} />
-      ) : gameType === 'nim' ? (
-        <NimBoard board={board} onCellClick={handleCellClick} turn={turn} />
-      ) : gameType === 'uttt' ? (
-        <UTTTBoard board={board} activeBoard={activeBoard} subBoardWinners={subBoardWinners} onCellClick={handleCellClick} turn={turn} />
-      ) : gameType === 'chain' ? (
-        <ChainBoard board={board} onCellClick={handleCellClick} turn={turn} turnOrder={turnOrder || ['X', 'O']} />
-      ) : gameType === 'memory' && memoryState ? (
-        <MemoryBoard state={memoryState} onCardClick={handleCellClick} currentPlayer={turn} />
       ) : (
-        <Board board={board} onCellClick={handleCellClick} winningLine={result?.line} />
-      )}
-
-      <div id="turnIndicator">{gameMessage}</div>
-
-      {/* F6: Series Winner */}
-      {seriesWinner && (
-        <div className="series-winner">
-          🏆 {isSpectator
-            ? `${seriesWinner === 'X' ? playerNames[0] || 'X' : playerNames[1] || 'O'} wins the series!`
-            : isLocal
-              ? `Player ${seriesWinner} wins the series!`
-              : seriesWinner === myRole ? "You win the series!" : "You lost the series!"
-          }
-        </div>
-      )}
-
-      <div className="controls">
-        {/* F5: Rematch UI (online) */}
-        {result && !isSpectator && !isLocal && (
-          <>
-            {rematchState === null && (
-              <button className="rematch-btn" onClick={handleRequestRematch}>Rematch</button>
+        <>
+          <div id="scoreboard">
+            {gameType === 'othello' ? (
+              `Black (X): ${board.filter(c => c === 'X').length} | White (O): ${board.filter(c => c === 'O').length}`
+            ) : gameType === 'checkers' ? (
+              `Black: ${board.filter(c => c && c.toLowerCase() === 'b').length} | Red: ${board.filter(c => c && c.toLowerCase() === 'r').length}`
+            ) : gameType === 'mancala' ? (
+              `X Store: ${board[6]} | O Store: ${board[13]}`
+            ) : gameType === 'dotsboxes' ? (
+              `X Boxes: ${board.slice(60).filter(c => c === 'X').length} | O Boxes: ${board.slice(60).filter(c => c === 'O').length}`
+            ) : gameType === 'nim' ? (
+              `Stones left: ${board.filter(c => c === 'stone').length}`
+            ) : gameType === 'memory' && memoryState?.scores ? (
+              Object.entries(memoryState.scores).map(([p, s]) => `${p}: ${s}`).join(' | ')
+            ) : gameType === 'chain' && turnOrder ? (
+              `Current: ${turn} | Players: ${turnOrder.join(', ')}`
+            ) : (
+              `X: ${score.X} | O: ${score.O}`
             )}
-            {rematchState === 'requested' && (
-              <button className="rematch-btn waiting" disabled>Waiting for opponent...</button>
+          </div>
+
+          {/* F4: Timer */}
+          {timeLeft !== null && !result && (
+            <div className={`timer ${timeLeft <= 5 ? 'critical' : timeLeft <= 10 ? 'warning' : ''}`}>
+              ⏱ {timeLeft}s
+              {isLocal && (
+                <button className="timer-pause-btn" onClick={() => setTimerPaused(!timerPaused)}>
+                  {timerPaused ? '▶' : '⏸'}
+                </button>
+              )}
+            </div>
+          )}
+          {timerPaused && isLocal && !result && (
+            <div className="timer-paused-badge">PAUSED</div>
+          )}
+
+          {gameType === 'connect4' ? (
+            <Connect4Board board={board} onColumnClick={handleCellClick} winningLine={result?.line} turn={turn} />
+          ) : gameType === 'othello' ? (
+            <OthelloBoard board={board} onCellClick={handleCellClick} turn={turn} />
+          ) : gameType === 'checkers' ? (
+            <CheckersBoard board={board} onMove={handleCheckersMove} turn={turn} myRole={myRole} isLocal={isLocal} />
+          ) : gameType === 'gomoku' ? (
+            <GomokuBoard board={board} onCellClick={handleCellClick} winningLine={result?.line} turn={turn} />
+          ) : gameType === 'mancala' ? (
+            <MancalaBoard board={board} onCellClick={handleCellClick} turn={turn} myRole={myRole} isLocal={isLocal} />
+          ) : gameType === 'dotsboxes' ? (
+            <DotsBoxesBoard board={board} onCellClick={handleCellClick} turn={turn} />
+          ) : gameType === 'nim' ? (
+            <NimBoard board={board} onCellClick={handleCellClick} turn={turn} />
+          ) : gameType === 'uttt' ? (
+            <UTTTBoard board={board} activeBoard={activeBoard} subBoardWinners={subBoardWinners} onCellClick={handleCellClick} turn={turn} />
+          ) : gameType === 'chain' ? (
+            <ChainBoard board={board} onCellClick={handleCellClick} turn={turn} turnOrder={turnOrder || ['X', 'O']} />
+          ) : gameType === 'memory' && memoryState ? (
+            <MemoryBoard state={memoryState} onCardClick={handleCellClick} currentPlayer={turn} />
+          ) : (
+            <Board board={board} onCellClick={handleCellClick} winningLine={result?.line} />
+          )}
+
+          <div id="turnIndicator">{gameMessage}</div>
+
+          {/* F6: Series Winner */}
+          {seriesWinner && (
+            <div className="series-winner">
+              🏆 {isSpectator
+                ? `${seriesWinner === 'X' ? playerNames[0] || 'X' : playerNames[1] || 'O'} wins the series!`
+                : isLocal
+                  ? `Player ${seriesWinner} wins the series!`
+                  : seriesWinner === myRole ? "You win the series!" : "You lost the series!"
+              }
+            </div>
+          )}
+
+          <div className="controls">
+            {/* F5: Rematch UI (online) */}
+            {result && !isSpectator && !isLocal && (
+              <>
+                {rematchState === null && (
+                  <button className="rematch-btn" onClick={handleRequestRematch}>Rematch</button>
+                )}
+                {rematchState === 'requested' && (
+                  <button className="rematch-btn waiting" disabled>Waiting for opponent...</button>
+                )}
+                {rematchState === 'received' && (
+                  <div className="rematch-prompt">
+                    <span>Rematch?</span>
+                    <button className="accept-btn" onClick={handleAcceptRematch}>Accept</button>
+                    <button className="decline-btn" onClick={handleDeclineRematch}>Decline</button>
+                  </div>
+                )}
+              </>
             )}
-            {rematchState === 'received' && (
-              <div className="rematch-prompt">
-                <span>Rematch?</span>
-                <button className="accept-btn" onClick={handleAcceptRematch}>Accept</button>
-                <button className="decline-btn" onClick={handleDeclineRematch}>Decline</button>
-              </div>
-            )}
-          </>
-        )}
 
-        {/* Local mode keeps simple restart */}
-        {result && isLocal && <button onClick={handleRestart}>Restart</button>}
+            {/* Local mode keeps simple restart */}
+            {result && isLocal && <button onClick={handleRestart}>Restart</button>}
 
-        <button onClick={() => setIsChatOpen(!isChatOpen)} className="chat-toggle-btn">
-          {isChatOpen ? 'Close Chat' : 'Chat'}
-        </button>
-        <button onClick={handleExit}>{isSpectator ? 'Stop Watching' : 'Exit to Lobby'}</button>
-      </div>
+            <button onClick={() => setIsChatOpen(!isChatOpen)} className="chat-toggle-btn">
+              {isChatOpen ? 'Close Chat' : 'Chat'}
+            </button>
+            <button onClick={handleExit}>{isSpectator ? 'Stop Watching' : 'Exit to Lobby'}</button>
+          </div>
 
-      {isChatOpen && (
-        <div className="game-chat-overlay">
-          <Chat roomCode={roomCode} senderName={myName || (isSpectator ? "Spectator" : "Player")} messages={gameChatMessages} onNewMessage={handleNewGameChat} />
-        </div>
+          {isChatOpen && (
+            <div className="game-chat-overlay">
+              <Chat roomCode={roomCode} senderName={myName || (isSpectator ? "Spectator" : "Player")} messages={gameChatMessages} onNewMessage={handleNewGameChat} />
+            </div>
+          )}
+        </>
       )}
 
       {/* F11: Reconnection overlay */}
