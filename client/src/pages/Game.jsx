@@ -49,13 +49,13 @@ function Game() {
     return Array(9).fill(null);
   };
   const [board, setBoard] = useState(getInitialBoard(initialGameType));
-  const [turn, setTurn] = useState(initialGameType === 'checkers' ? 'b' : initialGameType === 'chain' ? 'R' : "X");
+  const [turn, setTurn] = useState(initialGameType === 'checkers' ? 'b' : initialGameType === 'chain' ? 'X' : "X");
   const [mustMoveIndex, setMustMoveIndex] = useState(null);
   // UTTT state
   const [activeBoard, setActiveBoard] = useState(null);
   const [subBoardWinners, setSubBoardWinners] = useState(Array(9).fill(null));
   // Chain state
-  const [turnOrder, setTurnOrder] = useState(initialGameType === 'chain' ? ['R', 'G'] : null);
+  const [turnOrder, setTurnOrder] = useState(initialGameType === 'chain' ? ['X', 'O'] : null);
   const [chainMoveCount, setChainMoveCount] = useState(0);
   // Memory state
   const [memoryState, setMemoryState] = useState(initialGameType === 'memory' ? getInitialMemoryState(2) : null);
@@ -409,7 +409,7 @@ function Game() {
             setTurn(moveResult.nextTurn);
           }
         } else if (gameType === 'chain') {
-          const currentTurnOrder = turnOrder || ['R', 'G'];
+          const currentTurnOrder = turnOrder || ['X', 'O'];
           if (!currentTurnOrder) return;
           const moveResult = makeChainMove(board, index, turn, currentTurnOrder, chainMoveCount);
           if (!moveResult.valid) return;
@@ -522,7 +522,7 @@ function Game() {
         setBoard(getInitialBoard(gameType));
       }
       if (gameType !== 'memory') {
-        setTurn(gameType === 'checkers' ? 'b' : gameType === 'chain' ? 'R' : "X");
+        setTurn(gameType === 'checkers' ? 'b' : gameType === 'chain' ? 'X' : "X");
       }
       setResult(null);
       setMustMoveIndex(null);
@@ -531,10 +531,10 @@ function Game() {
         setSubBoardWinners(Array(9).fill(null));
       }
       if (gameType === 'chain') {
-        setTurnOrder(['R', 'G']);
+        setTurnOrder(['X', 'O']);
         setChainMoveCount(0);
       }
-      setGameMessage(gameType === 'checkers' ? "Player b's Turn" : gameType === 'chain' ? "Player R's Turn" : "Player X's Turn");
+      setGameMessage(gameType === 'checkers' ? "Player b's Turn" : "Player X's Turn");
     } else {
       socket.emit("restartGame", roomCode);
     }
@@ -819,7 +819,7 @@ function Game() {
       ) : gameType === 'uttt' ? (
         <UTTTBoard board={board} activeBoard={activeBoard} subBoardWinners={subBoardWinners} onCellClick={handleCellClick} turn={turn} />
       ) : gameType === 'chain' ? (
-        <ChainBoard board={board} onCellClick={handleCellClick} turn={turn} turnOrder={turnOrder || ['R', 'G']} />
+        <ChainBoard board={board} onCellClick={handleCellClick} turn={turn} turnOrder={turnOrder || ['X', 'O']} />
       ) : gameType === 'memory' && memoryState ? (
         <MemoryBoard state={memoryState} onCardClick={handleCellClick} currentPlayer={turn} />
       ) : (

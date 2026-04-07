@@ -3,10 +3,10 @@ import { parseCell, getCriticalMass } from '../utils/chainLogic';
 import './ChainBoard.css';
 
 const COLOR_NAMES = {
-    R: 'Red',
-    G: 'Green',
-    B: 'Blue',
+    X: 'Red',
+    O: 'Blue',
     Y: 'Yellow',
+    G: 'Green',
     P: 'Purple',
     C: 'Cyan',
 };
@@ -99,10 +99,10 @@ const ChainBoard = ({ board, onCellClick, turn, turnOrder }) => {
 
 const getPlayerHex = (color) => {
     const map = {
-        R: '#ef4444',
-        G: '#22c55e',
-        B: '#3b82f6',
+        X: '#ef4444',
+        O: '#3b82f6',
         Y: '#eab308',
+        G: '#22c55e',
         P: '#a855f7',
         C: '#06b6d4',
     };
