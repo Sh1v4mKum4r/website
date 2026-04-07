@@ -3,15 +3,15 @@ import React from 'react';
 import './DotsBoxesBoard.css';
 
 const DotsBoxesBoard = ({ board, onCellClick, turn }) => {
-    // 4x4 dot grid = 3x3 boxes
-    // Render using CSS Grid: 7 columns x 7 rows
-    //   Dots at even positions (0,0), (0,2), (0,4), (0,6), etc.
+    // 6x6 dot grid = 5x5 boxes
+    // Render using CSS Grid: 11 columns x 11 rows
+    //   Dots at even positions (0,0), (0,2), (0,4), …, (10,10)
     //   Horizontal edges at odd columns, even rows
     //   Vertical edges at even columns, odd rows
     //   Boxes at odd columns, odd rows
 
-    const GRID_ROWS = 7; // 4 dot rows + 3 gap rows
-    const GRID_COLS = 7; // 4 dot cols + 3 gap cols
+    const GRID_ROWS = 11; // 6 dot rows + 5 gap rows
+    const GRID_COLS = 11; // 6 dot cols + 5 gap cols
 
     const elements = [];
 
@@ -33,7 +33,7 @@ const DotsBoxesBoard = ({ board, onCellClick, turn }) => {
                 // Horizontal edge
                 const dotRow = gr / 2;
                 const dotCol = (gc - 1) / 2;
-                const edgeIndex = dotRow * 3 + dotCol;
+                const edgeIndex = dotRow * 5 + dotCol;
                 const claimed = board[edgeIndex];
 
                 elements.push(
@@ -48,7 +48,7 @@ const DotsBoxesBoard = ({ board, onCellClick, turn }) => {
                 // Vertical edge
                 const dotRow = (gr - 1) / 2;
                 const dotCol = gc / 2;
-                const edgeIndex = 12 + dotRow * 4 + dotCol;
+                const edgeIndex = 30 + dotRow * 6 + dotCol;
                 const claimed = board[edgeIndex];
 
                 elements.push(
@@ -63,7 +63,7 @@ const DotsBoxesBoard = ({ board, onCellClick, turn }) => {
                 // Box (odd row, odd col)
                 const boxRow = (gr - 1) / 2;
                 const boxCol = (gc - 1) / 2;
-                const boxIndex = 24 + boxRow * 3 + boxCol;
+                const boxIndex = 60 + boxRow * 5 + boxCol;
                 const owner = board[boxIndex];
 
                 elements.push(
