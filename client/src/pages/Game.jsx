@@ -605,6 +605,138 @@ function Game() {
 
   const winsNeeded = seriesLength > 0 ? Math.ceil(seriesLength / 2) : 0;
 
+  const getGameInstructions = (gType) => {
+    const instructions = {
+      tictactoe: {
+        title: "Tic Tac Toe",
+        rules: [
+          "Players take turns placing X or O on a 3×3 grid.",
+          "First to get 3 in a row (horizontal, vertical, or diagonal) wins.",
+          "If all 9 squares are filled with no winner, it's a draw."
+        ]
+      },
+      connect4: {
+        title: "Connect 4",
+        rules: [
+          "Players drop colored discs into a 7-column, 6-row grid.",
+          "Discs fall to the lowest available position in the column.",
+          "First to connect 4 discs in a row (horizontal, vertical, or diagonal) wins.",
+          "If the board fills up with no winner, it's a draw."
+        ]
+      },
+      othello: {
+        title: "Othello (Reversi)",
+        rules: [
+          "Players place discs on an 8×8 board, starting with 4 discs in the center.",
+          "You must place your disc to outflank (sandwich) opponent discs between your pieces.",
+          "All outflanked discs are flipped to your color.",
+          "If you can't make a valid move, your turn is skipped.",
+          "Game ends when neither player can move. Player with more discs wins."
+        ]
+      },
+      checkers: {
+        title: "Checkers",
+        rules: [
+          "Players move diagonally on dark squares. Black moves first.",
+          "Regular pieces move forward one square diagonally.",
+          "Jump over opponent pieces to capture them. Multiple jumps are allowed.",
+          "If a jump is available, you MUST take it.",
+          "Reach the opposite end to become a King — Kings can move backward too.",
+          "Win by capturing all opponent pieces or leaving them with no moves."
+        ]
+      },
+      gomoku: {
+        title: "Gomoku (Five in a Row)",
+        rules: [
+          "Players take turns placing stones on a 15×15 grid.",
+          "First to get exactly 5 stones in a row (horizontal, vertical, or diagonal) wins.",
+          "If the board fills up with no winner, it's a draw.",
+          "Plan ahead — block your opponent while building your own lines!"
+        ]
+      },
+      mancala: {
+        title: "Mancala",
+        rules: [
+          "Each player has 6 pits and a store (the large pit on their right).",
+          "On your turn, pick up all stones from one of your pits.",
+          "Drop one stone in each pit counterclockwise, including your store but skipping opponent's store.",
+          "If your last stone lands in your store, you get another turn!",
+          "If your last stone lands in an empty pit on your side, capture that stone and all stones in the opposite pit.",
+          "Game ends when one side is empty. Remaining stones go to that player's store.",
+          "Player with the most stones in their store wins."
+        ]
+      },
+      dotsboxes: {
+        title: "Dots & Boxes",
+        rules: [
+          "Players take turns drawing a line between two adjacent dots.",
+          "If your line completes a box (all 4 sides filled), you claim it and get another turn!",
+          "Completing multiple boxes in one move gives you extra turns for each.",
+          "The game ends when all boxes are completed.",
+          "Player with the most boxes wins."
+        ]
+      },
+      nim: {
+        title: "Nim",
+        rules: [
+          "Three rows of stones are arranged in a pyramid: 3, 5, and 7.",
+          "On your turn, click any remaining stone — it and all stones to its right in that row are removed.",
+          "You must remove at least one stone per turn.",
+          "The player who takes the LAST stone LOSES! (Misère variant)",
+          "Think strategically about which stones to take!"
+        ]
+      },
+      uttt: {
+        title: "Ultimate Tic Tac Toe",
+        rules: [
+          "The board is a 3×3 grid of smaller Tic Tac Toe boards.",
+          "Win small boards by getting 3 in a row within them.",
+          "Your move determines which small board your opponent plays in next — the cell position you choose sends them to the corresponding board.",
+          "If sent to a board that's already won or full, your opponent can play anywhere.",
+          "Win 3 small boards in a row (horizontal, vertical, or diagonal) to win the game!",
+          "The highlighted board shows where you must play."
+        ]
+      },
+      chain: {
+        title: "Chain Reaction",
+        rules: [
+          "Players place atoms on a grid. Each cell has a critical mass based on its position: corners=2, edges=3, center=4.",
+          "You can place on empty cells or cells you already own.",
+          "When a cell reaches its critical mass, it EXPLODES — sending atoms to all neighboring cells and converting them to your color!",
+          "Explosions can trigger chain reactions across the board.",
+          "Players who lose all their atoms are eliminated.",
+          "Last player standing wins!",
+          "Supports 2-6 players in multiplayer mode."
+        ]
+      },
+      memory: {
+        title: "Memory (Concentration)",
+        rules: [
+          "A grid of face-down cards contains matching pairs of emojis.",
+          "On your turn, flip two cards by clicking them.",
+          "If the cards match, you keep them and get another turn!",
+          "If they don't match, they flip back face-down and it's the next player's turn.",
+          "Remember where cards are! The player with the most pairs wins.",
+          "Supports 2-4 players in multiplayer mode."
+        ]
+      }
+    };
+
+    const info = instructions[gType];
+    if (!info) return <p>No instructions available.</p>;
+
+    return (
+      <>
+        <h3>{info.title}</h3>
+        <ul>
+          {info.rules.map((rule, i) => (
+            <li key={i}>{rule}</li>
+          ))}
+        </ul>
+      </>
+    );
+  };
+
   return (
     <div className="game-container">
       <h2>{gameType === 'connect4' ? 'Connect 4' : gameType === 'othello' ? 'Othello' : gameType === 'checkers' ? 'Checkers' : gameType === 'gomoku' ? 'Gomoku' : gameType === 'mancala' ? 'Mancala' : gameType === 'dotsboxes' ? 'Dots & Boxes' : gameType === 'nim' ? 'Nim' : gameType === 'uttt' ? 'Ultimate Tic Tac Toe' : gameType === 'chain' ? 'Chain Reaction' : gameType === 'memory' ? 'Memory' : 'Tic Tac Toe'}</h2>
@@ -735,6 +867,21 @@ function Game() {
           </div>
         </div>
       )}
+
+      {/* Game Instructions */}
+      <div className="game-instructions-section">
+        <button
+          className="instructions-toggle"
+          onClick={() => setShowInstructions(!showInstructions)}
+        >
+          {showInstructions ? 'Hide Instructions ▲' : 'How to Play ▼'}
+        </button>
+        {showInstructions && (
+          <div className="instructions-content">
+            {getGameInstructions(gameType)}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
