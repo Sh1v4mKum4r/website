@@ -1,0 +1,119 @@
+{
+  "project": {
+    "language": "javascript",
+    "framework": "react+express",
+    "test_runner": null,
+    "lint_command": "cd client && npx eslint src/",
+    "build_command": "cd client && npm run build"
+  },
+  "shared_files": [],
+  "contracts": [
+    {
+      "name": "gomoku-interface",
+      "file": "contracts/gomoku-interface.js",
+      "format": "code",
+      "producers": ["task-gomoku"],
+      "consumers": ["task-integration"]
+    },
+    {
+      "name": "mancala-interface",
+      "file": "contracts/mancala-interface.js",
+      "format": "code",
+      "producers": ["task-mancala"],
+      "consumers": ["task-integration"]
+    },
+    {
+      "name": "dotsboxes-interface",
+      "file": "contracts/dotsboxes-interface.js",
+      "format": "code",
+      "producers": ["task-dotsboxes"],
+      "consumers": ["task-integration"]
+    },
+    {
+      "name": "nim-interface",
+      "file": "contracts/nim-interface.js",
+      "format": "code",
+      "producers": ["task-nim"],
+      "consumers": ["task-integration"]
+    },
+    {
+      "name": "integration-spec",
+      "file": "contracts/integration-spec.md",
+      "format": "code",
+      "producers": [],
+      "consumers": ["task-integration"]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "task-gomoku",
+      "name": "Gomoku (Five in a Row) game",
+      "files_owned": [
+        "server/utils/gomokuLogic.js",
+        "client/src/utils/gomokuLogic.js",
+        "client/src/components/GomokuBoard.jsx",
+        "client/src/components/GomokuBoard.css"
+      ],
+      "depends_on": [],
+      "wave": 1,
+      "acceptance": "1. server/utils/gomokuLogic.js exports makeGomokuMove and checkGomokuWinner as CommonJS. 2. client/src/utils/gomokuLogic.js exports same functions as ES modules. 3. GomokuBoard.jsx renders a 15x15 clickable grid with X/O pieces. 4. GomokuBoard.css styles the board responsively. 5. makeGomokuMove correctly validates moves and detects 5-in-a-row wins and draws. 6. All files committed."
+    },
+    {
+      "id": "task-mancala",
+      "name": "Mancala game",
+      "files_owned": [
+        "server/utils/mancalaLogic.js",
+        "client/src/utils/mancalaLogic.js",
+        "client/src/components/MancalaBoard.jsx",
+        "client/src/components/MancalaBoard.css"
+      ],
+      "depends_on": [],
+      "wave": 1,
+      "acceptance": "1. server/utils/mancalaLogic.js exports getInitialMancalaBoard, makeMancalaMove, checkMancalaWinner as CommonJS. 2. client/src/utils/mancalaLogic.js exports same as ES modules. 3. MancalaBoard.jsx renders 2 rows of 6 pits plus 2 stores with stone counts. 4. MancalaBoard.css styles the board. 5. Stone distribution, capture, extra-turn, and game-over logic all work correctly. 6. All files committed."
+    },
+    {
+      "id": "task-dotsboxes",
+      "name": "Dots and Boxes game",
+      "files_owned": [
+        "server/utils/dotsboxesLogic.js",
+        "client/src/utils/dotsboxesLogic.js",
+        "client/src/components/DotsBoxesBoard.jsx",
+        "client/src/components/DotsBoxesBoard.css"
+      ],
+      "depends_on": [],
+      "wave": 1,
+      "acceptance": "1. server/utils/dotsboxesLogic.js exports getInitialDotsBoxesBoard, makeDotsBoxesMove, checkDotsBoxesWinner as CommonJS. 2. client/src/utils/dotsboxesLogic.js exports same as ES modules. 3. DotsBoxesBoard.jsx renders a 4x4 dot grid with clickable edges and colored completed boxes. 4. DotsBoxesBoard.css styles the board. 5. Edge claiming, box completion (with extra turn), and winner detection all work. 6. All files committed."
+    },
+    {
+      "id": "task-nim",
+      "name": "Nim stone removal game",
+      "files_owned": [
+        "server/utils/nimLogic.js",
+        "client/src/utils/nimLogic.js",
+        "client/src/components/NimBoard.jsx",
+        "client/src/components/NimBoard.css"
+      ],
+      "depends_on": [],
+      "wave": 1,
+      "acceptance": "1. server/utils/nimLogic.js exports getInitialNimBoard, makeNimMove, checkNimWinner as CommonJS. 2. client/src/utils/nimLogic.js exports same as ES modules. 3. NimBoard.jsx renders 3 rows of stones (3, 5, 7) with click-to-remove interaction. 4. NimBoard.css styles the board. 5. Stone removal, turn switching, and misere win condition (last stone taker loses) all work. 6. All files committed."
+    },
+    {
+      "id": "task-integration",
+      "name": "Integrate all 4 new games into shared files",
+      "files_owned": [
+        "server/server.js",
+        "client/src/pages/Game.jsx",
+        "client/src/pages/Games.jsx",
+        "client/src/components/Sidebar.jsx"
+      ],
+      "depends_on": ["task-gomoku", "task-mancala", "task-dotsboxes", "task-nim"],
+      "wave": 2,
+      "acceptance": "1. All 4 new games appear in Games.jsx GAMES array with pnp and 2p modes. 2. Game.jsx renders all 4 new board components, handles local play logic, and sends online moves. 3. server.js imports all new game logic, initializes boards in createRoom, handles moves in makeMove, and resets boards in restartGame/rematch. 4. Sidebar.jsx gameRouteMap and gameNameMap include all 4 new games. 5. Scoreboard displays appropriate info for each game type. 6. Game title displays correctly for each game. 7. All files committed."
+    }
+  ],
+  "waves": [
+    {"wave": 1, "tasks": ["task-gomoku", "task-mancala", "task-dotsboxes", "task-nim"]},
+    {"wave": 2, "tasks": ["task-integration"]}
+  ]
+}
+
