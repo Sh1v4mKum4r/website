@@ -6,6 +6,8 @@
     align-items: center;
     gap: 12px;
     margin: 20px auto;
+    width: 100%;
+    max-width: 800px;
 }
 
 .chain-turn-indicator {
