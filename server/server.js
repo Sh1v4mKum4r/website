@@ -65,8 +65,10 @@ const startTurnTimer = (lobbyCode, roomCode) => {
         const curIdx = to.indexOf(room.turn);
         winningRole = to[(curIdx + 1) % to.length] || 'X';
       } else if (room.gameType === 'memory') {
-        // For memory, the non-current player wins (for 2-player)
-        winningRole = room.turn === 'X' ? 'O' : 'X';
+        // For memory, use turnOrder to find next player
+        const mto = room.memoryState?.turnOrder || ['X', 'O'];
+        const mIdx = mto.indexOf(room.turn);
+        winningRole = mto[(mIdx + 1) % mto.length] || 'X';
       } else {
         winningRole = room.turn === 'X' ? 'O' : 'X';
       }
@@ -258,7 +260,7 @@ io.on('connection', (socket) => {
       const memState = getInitialMemoryState(2);
       room.memoryState = memState;
       room.board = null;
-      room.turn = 'X';
+      room.turn = memState.turnOrder[0];
     }
 
     socket.join(roomCode);
@@ -471,6 +473,9 @@ io.on('connection', (socket) => {
       }
       if (room.gameType === 'chain') {
         room.chainMoveCount = 0;
+        // Rebuild turnOrder from current players
+        const playerEntries = Object.values(room.players);
+        room.turnOrder = playerEntries.length > 0 ? playerEntries : [CHAIN_COLORS[0]];
       }
       if (room.gameType === 'memory') {
         const playerCount = Object.keys(room.players).length;
@@ -511,6 +516,8 @@ io.on('connection', (socket) => {
       }
       if (room.gameType === 'chain') {
         room.chainMoveCount = 0;
+        const playerEntries = Object.values(room.players);
+        room.turnOrder = playerEntries.length > 0 ? playerEntries : [CHAIN_COLORS[0]];
       }
       if (room.gameType === 'memory') {
         const playerCount = Object.keys(room.players).length;
