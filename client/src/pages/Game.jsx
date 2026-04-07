@@ -507,11 +507,13 @@ function Game() {
         const fresh = getInitialMemoryState(2);
         setMemoryState(fresh);
         setBoard(null);
-        setTurn('X');
+        setTurn(fresh.turnOrder[0]);
       } else {
         setBoard(getInitialBoard(gameType));
       }
-      setTurn(gameType === 'checkers' ? 'b' : gameType === 'chain' ? 'R' : "X");
+      if (gameType !== 'memory') {
+        setTurn(gameType === 'checkers' ? 'b' : gameType === 'chain' ? 'R' : "X");
+      }
       setResult(null);
       setMustMoveIndex(null);
       if (gameType === 'uttt') {
