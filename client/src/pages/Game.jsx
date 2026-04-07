@@ -78,6 +78,8 @@ function Game() {
 
   // F4: Turn Timer
   const [timeLeft, setTimeLeft] = useState(null);
+  const [timerPaused, setTimerPaused] = useState(false);
+  const prevTurnRef = useRef(turn);
 
   // F5: Rematch
   const [rematchState, setRematchState] = useState(null); // null | 'requested' | 'received'
@@ -201,12 +203,18 @@ function Game() {
       if (result && isLocal) setTimeLeft(null);
       return;
     }
+    if (timerPaused) return;
 
-    let t = 30;
+    // Reset to 30 if turn changed, otherwise resume from current timeLeft
+    const turnChanged = prevTurnRef.current !== turn;
+    prevTurnRef.current = turn;
+
+    let t = (turnChanged || timeLeft === null) ? 30 : timeLeft;
     setTimeLeft(t);
     const interval = setInterval(() => {
       t--;
       setTimeLeft(t);
+      if (t <= 5 && t > 0) playTick();
       if (t <= 0) {
         clearInterval(interval);
         let winner;
@@ -224,7 +232,7 @@ function Game() {
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [turn, isLocal, gameStarted, result]);
+  }, [turn, isLocal, gameStarted, result, timerPaused]);
 
   useEffect(() => {
     if (!gameStarted || result) return;
@@ -766,7 +774,7 @@ function Game() {
         ) : gameType === 'mancala' ? (
           `X Store: ${board[6]} | O Store: ${board[13]}`
         ) : gameType === 'dotsboxes' ? (
-          `X Boxes: ${board.slice(24).filter(c => c === 'X').length} | O Boxes: ${board.slice(24).filter(c => c === 'O').length}`
+          `X Boxes: ${board.slice(60).filter(c => c === 'X').length} | O Boxes: ${board.slice(60).filter(c => c === 'O').length}`
         ) : gameType === 'nim' ? (
           `Stones left: ${board.filter(c => c === 'stone').length}`
         ) : gameType === 'memory' && memoryState?.scores ? (
@@ -782,7 +790,15 @@ function Game() {
       {timeLeft !== null && !result && (
         <div className={`timer ${timeLeft <= 5 ? 'critical' : timeLeft <= 10 ? 'warning' : ''}`}>
           ⏱ {timeLeft}s
+          {isLocal && (
+            <button className="timer-pause-btn" onClick={() => setTimerPaused(!timerPaused)}>
+              {timerPaused ? '▶' : '⏸'}
+            </button>
+          )}
         </div>
+      )}
+      {timerPaused && isLocal && !result && (
+        <div className="timer-paused-badge">PAUSED</div>
       )}
 
       {gameType === 'connect4' ? (

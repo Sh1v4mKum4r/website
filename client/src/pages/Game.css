@@ -379,3 +379,34 @@
     transform: translateY(0);
   }
 }
+
+/* Timer Pause */
+.timer-pause-btn {
+  background: none;
+  border: 1px solid var(--border-color, #444);
+  color: var(--text-primary, #fff);
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-left: 8px;
+  transition: all 0.2s;
+}
+
+.timer-pause-btn:hover {
+  background: var(--accent, #7c3aed);
+  border-color: var(--accent, #7c3aed);
+}
+
+.timer-paused-badge {
+  font-size: 0.85rem;
+  color: var(--accent, #7c3aed);
+  font-weight: bold;
+  letter-spacing: 2px;
+  animation: pulse-badge 1s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-badge {
+  from { opacity: 0.5; }
+  to { opacity: 1; }
+}
