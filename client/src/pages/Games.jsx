@@ -10,6 +10,10 @@ const GAMES = [
     { id: 'connect4', name: 'Connect 4', desc: 'Connect 4 discs in a row to win!', route: 'connect4', modes: ['pnp', '2p'] },
     { id: 'othello', name: 'Othello', desc: 'Outflank and flip your opponent\'s discs!', route: 'othello', modes: ['pnp', '2p'] },
     { id: 'checkers', name: 'Checkers', desc: 'Jump and capture your way to victory!', route: 'checkers', modes: ['pnp', '2p'] },
+    { id: 'gomoku', name: 'Gomoku', desc: 'Get five in a row on a 15×15 board!', route: 'gomoku', modes: ['pnp', '2p'] },
+    { id: 'mancala', name: 'Mancala', desc: 'Capture stones and fill your store!', route: 'mancala', modes: ['pnp', '2p'] },
+    { id: 'dotsboxes', name: 'Dots & Boxes', desc: 'Draw lines and claim boxes!', route: 'dots-and-boxes', modes: ['pnp', '2p'] },
+    { id: 'nim', name: 'Nim', desc: "Remove stones — but don't take the last one!", route: 'nim', modes: ['pnp', '2p'] },
 ];
 
 const CATEGORIES = [
