@@ -70,6 +70,7 @@ function Game() {
   const [myName, setMyName] = useState(location.state?.playerName || null);
   const [gameMessage, setGameMessage] = useState("Waiting for opponent...");
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false);
   const [gameChatMessages, setGameChatMessages] = useState([]);
   const handleNewGameChat = useCallback((msg) => {
     setGameChatMessages((prev) => [...prev, msg]);
