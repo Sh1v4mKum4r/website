@@ -235,7 +235,11 @@ io.on('connection', (socket) => {
       spectators: [],
       board,
       turn: gameType === 'checkers' ? "b" : gameType === 'chain' ? CHAIN_COLORS[0] : "X",
-      score: { X: 0, O: 0, b: 0, r: 0 },
+      score: gameType === 'chain'
+        ? Object.fromEntries(CHAIN_COLORS.map(c => [c, 0]))
+        : gameType === 'memory'
+        ? { X: 0, O: 0, P3: 0, P4: 0 }
+        : { X: 0, O: 0, b: 0, r: 0 },
       seriesLength: seriesLength || 0,
       chatHistory: [],
       mustMoveIndex: null,
@@ -308,12 +312,15 @@ io.on('connection', (socket) => {
       if (playerCount === 1) assignedRole = 'O';
       else if (playerCount === 2) assignedRole = 'P3';
       else assignedRole = 'P4';
-      // Rebuild memory state with new player count if needed
-      if (playerCount >= 2) {
-        const memState = getInitialMemoryState(playerCount + 1);
-        room.memoryState = memState;
-        room.turn = memState.turnOrder[0];
-      }
+      // Rebuild memory state with turnOrder matching actual player roles
+      const allRoles = [...Object.values(room.players), assignedRole];
+      const memState = getInitialMemoryState(allRoles.length);
+      // Override turnOrder and scores to match actual assigned roles
+      memState.turnOrder = allRoles;
+      memState.scores = {};
+      for (const r of allRoles) memState.scores[r] = 0;
+      room.memoryState = memState;
+      room.turn = memState.turnOrder[0];
     } else {
       assignedRole = 'O';
     }
@@ -478,9 +485,12 @@ io.on('connection', (socket) => {
         room.turnOrder = playerEntries.length > 0 ? playerEntries : [CHAIN_COLORS[0]];
       }
       if (room.gameType === 'memory') {
-        const playerCount = Object.keys(room.players).length;
-        room.memoryState = getInitialMemoryState(playerCount);
-        room.turn = room.memoryState.turnOrder[0];
+        const roles = Object.values(room.players);
+        const memState = getInitialMemoryState(roles.length);
+        memState.turnOrder = roles;
+        memState.scores = Object.fromEntries(roles.map(r => [r, 0]));
+        room.memoryState = memState;
+        room.turn = memState.turnOrder[0];
       }
       io.to(code).emit("gameUpdate", room);
       if (Object.keys(room.players).length >= 2) {
@@ -501,7 +511,15 @@ io.on('connection', (socket) => {
     }
     if (room.rematchRequests.length >= 2) {
       if (room.seriesWinner) {
-        room.score = { X: 0, O: 0 };
+        // Reset score with correct keys for the game type
+        if (room.gameType === 'chain') {
+          room.score = Object.fromEntries(CHAIN_COLORS.map(c => [c, 0]));
+        } else if (room.gameType === 'memory') {
+          const roles = Object.values(room.players);
+          room.score = Object.fromEntries(roles.map(r => [r, 0]));
+        } else {
+          room.score = room.gameType === 'checkers' ? { b: 0, r: 0 } : { X: 0, O: 0 };
+        }
         room.seriesWinner = null;
       }
       room.board = getBoardForGameType(room.gameType);
@@ -520,9 +538,12 @@ io.on('connection', (socket) => {
         room.turnOrder = playerEntries.length > 0 ? playerEntries : [CHAIN_COLORS[0]];
       }
       if (room.gameType === 'memory') {
-        const playerCount = Object.keys(room.players).length;
-        room.memoryState = getInitialMemoryState(playerCount);
-        room.turn = room.memoryState.turnOrder[0];
+        const roles = Object.values(room.players);
+        const memState = getInitialMemoryState(roles.length);
+        memState.turnOrder = roles;
+        memState.scores = Object.fromEntries(roles.map(r => [r, 0]));
+        room.memoryState = memState;
+        room.turn = memState.turnOrder[0];
       }
       io.to(code).emit("gameUpdate", room);
       startTurnTimer(lobbyCode, code);
@@ -626,8 +647,10 @@ io.on('connection', (socket) => {
     const lobby = lobbies[lobbyCode];
     const roomList = Object.entries(lobby.rooms).map(([code, room]) => ({
       code,
+      gameType: room.gameType || 'tictactoe',
       playerNames: room.playerNames || [],
-      isFull: Object.keys(room.players).length >= 2
+      isFull: Object.keys(room.players).length >= (GAME_CONFIG[room.gameType] || { maxPlayers: 2 }).maxPlayers,
+      spectatorCount: (room.spectators || []).length
     }));
 
     callback({ players: lobby.players, rooms: roomList, lobbyCode });
