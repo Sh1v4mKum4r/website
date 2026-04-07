@@ -1,0 +1,105 @@
+.gomoku-board {
+    display: grid;
+    grid-template-columns: repeat(15, 1fr);
+    grid-template-rows: repeat(15, 1fr);
+    gap: 1px;
+    background-color: var(--accent);
+    width: 100%;
+    max-width: 480px;
+    aspect-ratio: 1 / 1;
+    margin: 20px auto;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 10px 20px var(--shadow-color);
+}
+
+.gomoku-cell {
+    background-color: var(--bg-secondary);
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+
+/* Hover effects for empty cells based on current turn */
+.turn-x .gomoku-cell:not(:has(.gomoku-stone)):hover {
+    background-color: rgba(255, 0, 204, 0.2);
+}
+
+.turn-o .gomoku-cell:not(:has(.gomoku-stone)):hover {
+    background-color: rgba(0, 242, 255, 0.2);
+}
+
+/* Stone base styles */
+.gomoku-stone {
+    width: 80%;
+    height: 80%;
+    border-radius: 50%;
+    transition: transform 0.15s;
+    animation: stone-place 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.gomoku-stone.black {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--accent-secondary);
+    box-shadow: 0 0 8px var(--accent-secondary);
+}
+
+.gomoku-stone.white {
+    background: var(--bg-primary);
+    border: 1px solid var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+}
+
+/* Winning cell highlight with pulse animation */
+.gomoku-cell.win .gomoku-stone {
+    animation: gomoku-pulse-win 1s infinite alternate;
+    border-width: 2px;
+}
+
+.gomoku-cell.win .gomoku-stone.black {
+    box-shadow: 0 0 14px var(--accent-secondary), 0 0 28px var(--accent-secondary);
+}
+
+.gomoku-cell.win .gomoku-stone.white {
+    box-shadow: 0 0 14px var(--accent), 0 0 28px var(--accent);
+}
+
+@keyframes stone-place {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes gomoku-pulse-win {
+    from {
+        filter: brightness(1);
+        transform: scale(1);
+    }
+    to {
+        filter: brightness(1.5);
+        transform: scale(1.15);
+    }
+}
+
+/* Responsive: smaller cells on tablets */
+@media (max-width: 600px) {
+    .gomoku-board {
+        max-width: 360px;
+    }
+}
+
+/* Responsive: even smaller on phones */
+@media (max-width: 400px) {
+    .gomoku-board {
+        max-width: 300px;
+    }
+}
