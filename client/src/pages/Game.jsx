@@ -9,12 +9,18 @@ import GomokuBoard from '../components/GomokuBoard';
 import MancalaBoard from '../components/MancalaBoard';
 import DotsBoxesBoard from '../components/DotsBoxesBoard';
 import NimBoard from '../components/NimBoard';
+import UTTTBoard from '../components/UTTTBoard';
+import ChainBoard from '../components/ChainBoard';
+import MemoryBoard from '../components/MemoryBoard';
 import { makeOthelloMove } from '../utils/othelloLogic';
 import { getInitialCheckersBoard, makeCheckersMove } from '../utils/checkersLogic';
 import { makeGomokuMove } from '../utils/gomokuLogic';
 import { getInitialMancalaBoard, makeMancalaMove } from '../utils/mancalaLogic';
 import { getInitialDotsBoxesBoard, makeDotsBoxesMove } from '../utils/dotsboxesLogic';
 import { getInitialNimBoard, makeNimMove } from '../utils/nimLogic';
+import { getInitialUTTTState, makeUTTTMove } from '../utils/utttLogic';
+import { getInitialChainBoard, makeChainMove, CHAIN_COLORS } from '../utils/chainLogic';
+import { getInitialMemoryState, makeMemoryMove } from '../utils/memoryLogic';
 import Chat from '../components/Chat';
 import { playMove, playWin, playLose, playJoin, playTimeout, playTick } from '../utils/sounds';
 import './Game.css';
@@ -37,11 +43,22 @@ function Game() {
     if (gType === 'mancala') return getInitialMancalaBoard();
     if (gType === 'dotsboxes') return getInitialDotsBoxesBoard();
     if (gType === 'nim') return getInitialNimBoard();
+    if (gType === 'uttt') return Array(81).fill(null);
+    if (gType === 'chain') return getInitialChainBoard();
+    if (gType === 'memory') return null; // Memory uses memoryState instead
     return Array(9).fill(null);
   };
   const [board, setBoard] = useState(getInitialBoard(initialGameType));
-  const [turn, setTurn] = useState(initialGameType === 'checkers' ? 'b' : "X");
+  const [turn, setTurn] = useState(initialGameType === 'checkers' ? 'b' : initialGameType === 'chain' ? 'R' : "X");
   const [mustMoveIndex, setMustMoveIndex] = useState(null);
+  // UTTT state
+  const [activeBoard, setActiveBoard] = useState(null);
+  const [subBoardWinners, setSubBoardWinners] = useState(Array(9).fill(null));
+  // Chain state
+  const [turnOrder, setTurnOrder] = useState(initialGameType === 'chain' ? ['R', 'G'] : null);
+  const [chainMoveCount, setChainMoveCount] = useState(0);
+  // Memory state
+  const [memoryState, setMemoryState] = useState(initialGameType === 'memory' ? getInitialMemoryState(2) : null);
   const [myRole, setMyRole] = useState(location.state?.role || null);
   const [gameType, setGameType] = useState(location.state?.gameType || 'tictactoe');
   const [score, setScore] = useState({ X: 0, O: 0 });
@@ -81,7 +98,7 @@ function Game() {
     if (roomCode === 'local') {
       setIsLocal(true);
       setGameStarted(true);
-      setGameMessage(initialGameType === 'checkers' ? "Player b's Turn" : "Player X's Turn");
+      setGameMessage(initialGameType === 'checkers' ? "Player b's Turn" : initialGameType === 'chain' ? "Player R's Turn" : "Player X's Turn");
     } else {
       const roleFromState = location.state?.role;
       const gameDataFromState = location.state?.gameData;
@@ -191,7 +208,15 @@ function Game() {
       setTimeLeft(t);
       if (t <= 0) {
         clearInterval(interval);
-        const winner = turn === 'X' ? 'O' : 'X';
+        let winner;
+        if (gameType === 'checkers') {
+          winner = turn === 'b' ? 'r' : 'b';
+        } else if (gameType === 'chain' && turnOrder) {
+          const curIdx = turnOrder.indexOf(turn);
+          winner = turnOrder[(curIdx + 1) % turnOrder.length] || 'X';
+        } else {
+          winner = turn === 'X' ? 'O' : 'X';
+        }
         setResult({ winner, line: null, timeout: true });
         setGameMessage(`Time's up! Player ${winner} wins!`);
         playTimeout();
@@ -224,6 +249,14 @@ function Game() {
     if (data.seriesWinner !== undefined) setSeriesWinner(data.seriesWinner);
     if (data.timeLeft !== undefined) setTimeLeft(data.timeLeft);
     if (data.mustMoveIndex !== undefined) setMustMoveIndex(data.mustMoveIndex);
+    // UTTT extra state
+    if (data.activeBoard !== undefined) setActiveBoard(data.activeBoard);
+    if (data.subBoardWinners !== undefined) setSubBoardWinners(data.subBoardWinners);
+    // Chain extra state
+    if (data.turnOrder !== undefined) setTurnOrder(data.turnOrder);
+    if (data.chainMoveCount !== undefined) setChainMoveCount(data.chainMoveCount);
+    // Memory extra state
+    if (data.memoryState !== undefined) setMemoryState(data.memoryState);
     if (data.result) {
       setResult(data.result);
       setTimeLeft(null);
@@ -350,6 +383,75 @@ function Game() {
           } else {
             setTurn(moveResult.nextTurn);
           }
+        } else if (gameType === 'uttt') {
+          const state = { board, activeBoard, subBoardWinners };
+          const moveResult = makeUTTTMove(state, index, turn);
+          if (!moveResult.valid) return;
+
+          setBoard(moveResult.board);
+          setActiveBoard(moveResult.activeBoard);
+          setSubBoardWinners(moveResult.subBoardWinners);
+          if (moveResult.result) {
+            setResult(moveResult.result);
+            if (moveResult.result.winner === 'draw') setGameMessage("It's a draw!");
+            else setGameMessage(`Player ${moveResult.result.winner} wins!`);
+          } else {
+            setTurn(moveResult.nextTurn);
+          }
+        } else if (gameType === 'chain') {
+          const currentTurnOrder = turnOrder || ['R', 'G'];
+          if (!currentTurnOrder) return;
+          const moveResult = makeChainMove(board, index, turn, currentTurnOrder, chainMoveCount);
+          if (!moveResult.valid) return;
+
+          setBoard(moveResult.board);
+          setTurnOrder(moveResult.turnOrder);
+          setChainMoveCount(moveResult.moveCount);
+          if (moveResult.result) {
+            setResult(moveResult.result);
+            if (moveResult.result.winner === 'draw') setGameMessage("It's a draw!");
+            else setGameMessage(`Player ${moveResult.result.winner} wins!`);
+          } else {
+            setTurn(moveResult.nextTurn);
+          }
+        } else if (gameType === 'memory') {
+          if (!memoryState) return;
+          const moveResult = makeMemoryMove(memoryState, index, turn);
+          if (!moveResult.valid) return;
+
+          const newState = {
+            cards: moveResult.cards,
+            revealed: moveResult.revealed,
+            matchedBy: moveResult.matchedBy,
+            flippedIndices: moveResult.flippedIndices,
+            scores: moveResult.scores,
+            turnOrder: moveResult.turnOrder,
+            moveCount: moveResult.moveCount,
+          };
+          setMemoryState(newState);
+
+          if (moveResult.result) {
+            setResult(moveResult.result);
+            if (moveResult.result.winner === 'draw') setGameMessage("It's a draw!");
+            else setGameMessage(`Player ${moveResult.result.winner} wins!`);
+          } else {
+            setTurn(moveResult.nextTurn);
+            if (moveResult.needsFlipBack) {
+              const flipIndices = moveResult.flipBackIndices;
+              const nextT = moveResult.nextTurn;
+              setTimeout(() => {
+                setMemoryState(prev => {
+                  if (!prev) return prev;
+                  const newRevealed = [...prev.revealed];
+                  for (const idx of flipIndices) {
+                    if (newRevealed[idx] === 'flipped') newRevealed[idx] = 'hidden';
+                  }
+                  return { ...prev, revealed: newRevealed, flippedIndices: [] };
+                });
+                setTurn(nextT);
+              }, 1500);
+            }
+          }
         } else {
           if (board[index]) return;
           const newBoard = [...board];
@@ -368,7 +470,7 @@ function Game() {
     } else {
       // For standard grid games, skip if cell is already occupied
       // (connect4, mancala, dotsboxes, nim handle validity server-side)
-      const skipOccupiedCheck = ['connect4', 'mancala', 'dotsboxes', 'nim'];
+      const skipOccupiedCheck = ['connect4', 'mancala', 'dotsboxes', 'nim', 'uttt', 'chain', 'memory'];
       if (!skipOccupiedCheck.includes(gameType) && board[index]) return;
       if (turn === myRole) {
         socket.emit("makeMove", { code: roomCode, index, player: myRole });
@@ -401,11 +503,26 @@ function Game() {
 
   const handleRestart = () => {
     if (isLocal) {
-      setBoard(getInitialBoard(gameType));
-      setTurn(gameType === 'checkers' ? 'b' : "X");
+      if (gameType === 'memory') {
+        const fresh = getInitialMemoryState(2);
+        setMemoryState(fresh);
+        setBoard(null);
+        setTurn('X');
+      } else {
+        setBoard(getInitialBoard(gameType));
+      }
+      setTurn(gameType === 'checkers' ? 'b' : gameType === 'chain' ? 'R' : "X");
       setResult(null);
       setMustMoveIndex(null);
-      setGameMessage(gameType === 'checkers' ? "Player b's Turn" : "Player X's Turn");
+      if (gameType === 'uttt') {
+        setActiveBoard(null);
+        setSubBoardWinners(Array(9).fill(null));
+      }
+      if (gameType === 'chain') {
+        setTurnOrder(['R', 'G']);
+        setChainMoveCount(0);
+      }
+      setGameMessage(gameType === 'checkers' ? "Player b's Turn" : gameType === 'chain' ? "Player R's Turn" : "Player X's Turn");
     } else {
       socket.emit("restartGame", roomCode);
     }
@@ -487,7 +604,7 @@ function Game() {
 
   return (
     <div className="game-container">
-      <h2>{gameType === 'connect4' ? 'Connect 4' : gameType === 'othello' ? 'Othello' : gameType === 'checkers' ? 'Checkers' : gameType === 'gomoku' ? 'Gomoku' : gameType === 'mancala' ? 'Mancala' : gameType === 'dotsboxes' ? 'Dots & Boxes' : gameType === 'nim' ? 'Nim' : 'Tic Tac Toe'}</h2>
+      <h2>{gameType === 'connect4' ? 'Connect 4' : gameType === 'othello' ? 'Othello' : gameType === 'checkers' ? 'Checkers' : gameType === 'gomoku' ? 'Gomoku' : gameType === 'mancala' ? 'Mancala' : gameType === 'dotsboxes' ? 'Dots & Boxes' : gameType === 'nim' ? 'Nim' : gameType === 'uttt' ? 'Ultimate Tic Tac Toe' : gameType === 'chain' ? 'Chain Reaction' : gameType === 'memory' ? 'Memory' : 'Tic Tac Toe'}</h2>
       {isSpectator && <div className="spectator-badge">👁 Spectating</div>}
       {!isLocal && !isSpectator && myName && <div className="player-names">Playing as {myName} ({myRole === 'b' ? 'Black' : myRole === 'r' ? 'Red' : myRole})</div>}
       {isSpectator && playerNames.length >= 2 && (
@@ -517,6 +634,10 @@ function Game() {
           `X Boxes: ${board.slice(24).filter(c => c === 'X').length} | O Boxes: ${board.slice(24).filter(c => c === 'O').length}`
         ) : gameType === 'nim' ? (
           `Stones left: ${board.filter(c => c === 'stone').length}`
+        ) : gameType === 'memory' && memoryState?.scores ? (
+          Object.entries(memoryState.scores).map(([p, s]) => `${p}: ${s}`).join(' | ')
+        ) : gameType === 'chain' && turnOrder ? (
+          `Current: ${turn} | Players: ${turnOrder.join(', ')}`
         ) : (
           `X: ${score.X} | O: ${score.O}`
         )}
@@ -543,6 +664,12 @@ function Game() {
         <DotsBoxesBoard board={board} onCellClick={handleCellClick} turn={turn} />
       ) : gameType === 'nim' ? (
         <NimBoard board={board} onCellClick={handleCellClick} turn={turn} />
+      ) : gameType === 'uttt' ? (
+        <UTTTBoard board={board} activeBoard={activeBoard} subBoardWinners={subBoardWinners} onCellClick={handleCellClick} turn={turn} />
+      ) : gameType === 'chain' ? (
+        <ChainBoard board={board} onCellClick={handleCellClick} turn={turn} turnOrder={turnOrder || ['R', 'G']} />
+      ) : gameType === 'memory' && memoryState ? (
+        <MemoryBoard state={memoryState} onCardClick={handleCellClick} currentPlayer={turn} />
       ) : (
         <Board board={board} onCellClick={handleCellClick} winningLine={result?.line} />
       )}
