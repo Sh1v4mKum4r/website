@@ -3,7 +3,7 @@
 // Each cell: null (empty) or string like 'R2' (Red player, 2 atoms)
 // Player colors: R=Red, G=Green, B=Blue, Y=Yellow, P=Purple, C=Cyan
 
-export const CHAIN_COLORS = ['R', 'G', 'B', 'Y', 'P', 'C'];
+export const CHAIN_COLORS = ['X', 'O', 'Y', 'G', 'P', 'C'];
 export const ROWS = 9;
 export const COLS = 9;
 
