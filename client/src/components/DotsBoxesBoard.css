@@ -1,9 +1,9 @@
 .db-board {
     display: grid;
-    grid-template-columns: 16px 1fr 16px 1fr 16px 1fr 16px;
-    grid-template-rows: 16px 1fr 16px 1fr 16px 1fr 16px;
+    grid-template-columns: 14px 1fr 14px 1fr 14px 1fr 14px 1fr 14px 1fr 14px;
+    grid-template-rows: 14px 1fr 14px 1fr 14px 1fr 14px 1fr 14px 1fr 14px;
     width: 100%;
-    max-width: 420px;
+    max-width: 500px;
     aspect-ratio: 1 / 1;
     margin: 20px auto;
     gap: 0;
@@ -16,8 +16,8 @@
 
 /* Dots */
 .db-dot {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     background: var(--accent);
     border-radius: 50%;
     z-index: 2;
@@ -99,15 +99,15 @@
 /* Responsive */
 @media (max-width: 600px) {
     .db-board {
-        grid-template-columns: 12px 1fr 12px 1fr 12px 1fr 12px;
-        grid-template-rows: 12px 1fr 12px 1fr 12px 1fr 12px;
+        grid-template-columns: 10px 1fr 10px 1fr 10px 1fr 10px 1fr 10px 1fr 10px;
+        grid-template-rows: 10px 1fr 10px 1fr 10px 1fr 10px 1fr 10px 1fr 10px;
         padding: 6px;
-        max-width: 320px;
+        max-width: 380px;
     }
 
     .db-dot {
-        width: 12px;
-        height: 12px;
+        width: 10px;
+        height: 10px;
     }
 
     .db-edge-h {
@@ -121,15 +121,15 @@
 
 @media (max-width: 400px) {
     .db-board {
-        grid-template-columns: 10px 1fr 10px 1fr 10px 1fr 10px;
-        grid-template-rows: 10px 1fr 10px 1fr 10px 1fr 10px;
+        grid-template-columns: 8px 1fr 8px 1fr 8px 1fr 8px 1fr 8px 1fr 8px;
+        grid-template-rows: 8px 1fr 8px 1fr 8px 1fr 8px 1fr 8px 1fr 8px;
         padding: 4px;
-        max-width: 260px;
+        max-width: 300px;
     }
 
     .db-dot {
-        width: 10px;
-        height: 10px;
+        width: 8px;
+        height: 8px;
     }
 
     .db-edge-h {
