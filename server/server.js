@@ -8,9 +8,26 @@ const { makeGomokuMove } = require('./utils/gomokuLogic');
 const { getInitialMancalaBoard, makeMancalaMove } = require('./utils/mancalaLogic');
 const { getInitialDotsBoxesBoard, makeDotsBoxesMove } = require('./utils/dotsboxesLogic');
 const { getInitialNimBoard, makeNimMove } = require('./utils/nimLogic');
+const { getInitialUTTTState, makeUTTTMove } = require('./utils/utttLogic');
+const { getInitialChainBoard, makeChainMove, CHAIN_COLORS } = require('./utils/chainLogic');
+const { getInitialMemoryState, makeMemoryMove } = require('./utils/memoryLogic');
 
 const app = express();
 app.use(cors());
+
+const GAME_CONFIG = {
+    tictactoe: { maxPlayers: 2 },
+    connect4: { maxPlayers: 2 },
+    othello: { maxPlayers: 2 },
+    checkers: { maxPlayers: 2 },
+    gomoku: { maxPlayers: 2 },
+    mancala: { maxPlayers: 2 },
+    dotsboxes: { maxPlayers: 2 },
+    nim: { maxPlayers: 2 },
+    uttt: { maxPlayers: 2 },
+    chain: { maxPlayers: 6 },
+    memory: { maxPlayers: 4 },
+};
 
 const server = http.createServer(app);
 
@@ -40,8 +57,19 @@ const startTurnTimer = (lobbyCode, roomCode) => {
     if (room.timeLeft <= 0) {
       clearTurnTimer(roomCode);
       let winningRole = 'X';
-      if (room.gameType === 'checkers') winningRole = room.turn === 'b' ? 'r' : 'b';
-      else winningRole = room.turn === 'X' ? 'O' : 'X';
+      if (room.gameType === 'checkers') {
+        winningRole = room.turn === 'b' ? 'r' : 'b';
+      } else if (room.gameType === 'chain') {
+        // For chain, the current player times out; next player in turn order wins
+        const to = room.turnOrder || [];
+        const curIdx = to.indexOf(room.turn);
+        winningRole = to[(curIdx + 1) % to.length] || 'X';
+      } else if (room.gameType === 'memory') {
+        // For memory, the non-current player wins (for 2-player)
+        winningRole = room.turn === 'X' ? 'O' : 'X';
+      } else {
+        winningRole = room.turn === 'X' ? 'O' : 'X';
+      }
       handleGameResult(room, { winner: winningRole, line: null, timeout: true }, roomCode);
       io.to(roomCode).emit('gameUpdate', room);
     }
@@ -87,6 +115,9 @@ const getBoardForGameType = (gameType) => {
   if (gameType === 'mancala') return getInitialMancalaBoard();
   if (gameType === 'dotsboxes') return getInitialDotsBoxesBoard();
   if (gameType === 'nim') return getInitialNimBoard();
+  if (gameType === 'uttt') return Array(81).fill(null);
+  if (gameType === 'chain') return getInitialChainBoard();
+  if (gameType === 'memory') return null; // Memory uses memoryState instead
   return Array(9).fill(null);
 };
 
@@ -109,7 +140,7 @@ const broadcastLobbyState = (lobbyCode) => {
     code,
     gameType: room.gameType || 'tictactoe',
     playerNames: room.playerNames || [],
-    isFull: Object.keys(room.players).length >= 2,
+    isFull: Object.keys(room.players).length >= (GAME_CONFIG[room.gameType] || { maxPlayers: 2 }).maxPlayers,
     spectatorCount: (room.spectators || []).length
   }));
 
@@ -190,23 +221,50 @@ io.on('connection', (socket) => {
 
     const board = getBoardForGameType(gameType);
 
+    // Determine first player role
+    let firstRole = 'X';
+    if (gameType === 'checkers') firstRole = 'b';
+    else if (gameType === 'chain') firstRole = CHAIN_COLORS[0]; // 'R'
+
     lobby.rooms[roomCode] = {
       gameType,
-      players: { [socket.id]: gameType === 'checkers' ? "b" : "X" },
+      players: { [socket.id]: firstRole },
       playerNames: [playerName],
       spectators: [],
       board,
-      turn: gameType === 'checkers' ? "b" : "X",
+      turn: gameType === 'checkers' ? "b" : gameType === 'chain' ? CHAIN_COLORS[0] : "X",
       score: { X: 0, O: 0, b: 0, r: 0 },
       seriesLength: seriesLength || 0,
       chatHistory: [],
       mustMoveIndex: null,
     };
 
+    const room = lobby.rooms[roomCode];
+
+    // UTTT extra state
+    if (gameType === 'uttt') {
+      room.activeBoard = null;
+      room.subBoardWinners = Array(9).fill(null);
+    }
+
+    // Chain extra state
+    if (gameType === 'chain') {
+      room.turnOrder = [CHAIN_COLORS[0]];
+      room.chainMoveCount = 0;
+    }
+
+    // Memory extra state
+    if (gameType === 'memory') {
+      const memState = getInitialMemoryState(2);
+      room.memoryState = memState;
+      room.board = null;
+      room.turn = 'X';
+    }
+
     socket.join(roomCode);
     console.log(`Room ${roomCode} (${gameType}) created in lobby ${lobbyCode} by ${playerName}`);
 
-    callback({ code: roomCode, role: "X", playerName, gameType, seriesLength: seriesLength || 0 });
+    callback({ code: roomCode, role: firstRole, playerName, gameType, seriesLength: seriesLength || 0 });
     broadcastLobbyState(lobbyCode);
   });
 
@@ -228,21 +286,66 @@ io.on('connection', (socket) => {
     const existingRoom = Object.values(lobby.rooms).find(r => r.players[socket.id]);
     if (existingRoom) return callback({ error: "You are already in a game" });
 
-    if (Object.keys(room.players).length >= 2) {
+    const maxPlayers = (GAME_CONFIG[room.gameType] || { maxPlayers: 2 }).maxPlayers;
+    if (Object.keys(room.players).length >= maxPlayers) {
       return callback({ error: "Room is full" });
     }
 
     const playerName = lobby.players.find(p => p.id === socket.id)?.name || "Unknown";
-    const assignedRole = room.gameType === 'checkers' ? "r" : "O";
+    const playerCount = Object.keys(room.players).length;
+
+    // Assign role based on game type
+    let assignedRole;
+    if (room.gameType === 'checkers') {
+      assignedRole = 'r';
+    } else if (room.gameType === 'chain') {
+      assignedRole = CHAIN_COLORS[playerCount]; // Next color in sequence
+      room.turnOrder = room.turnOrder || [];
+      room.turnOrder.push(assignedRole);
+    } else if (room.gameType === 'memory') {
+      if (playerCount === 1) assignedRole = 'O';
+      else if (playerCount === 2) assignedRole = 'P3';
+      else assignedRole = 'P4';
+      // Rebuild memory state with new player count if needed
+      if (playerCount >= 2) {
+        const memState = getInitialMemoryState(playerCount + 1);
+        room.memoryState = memState;
+        room.turn = memState.turnOrder[0];
+      }
+    } else {
+      assignedRole = 'O';
+    }
+
     room.players[socket.id] = assignedRole;
     room.playerNames.push(playerName);
 
     socket.join(roomCode);
     console.log(`${playerName} joined room ${roomCode}`);
 
-    callback({ code: roomCode, role: room.players[socket.id], gameData: { board: room.board, turn: room.turn, score: room.score, playerNames: room.playerNames, gameType: room.gameType, seriesLength: room.seriesLength || 0, chatHistory: room.chatHistory || [] } });
+    const gameData = {
+      board: room.board, turn: room.turn, score: room.score,
+      playerNames: room.playerNames, gameType: room.gameType,
+      seriesLength: room.seriesLength || 0, chatHistory: room.chatHistory || [],
+    };
+    // Include extra state
+    if (room.gameType === 'uttt') {
+      gameData.activeBoard = room.activeBoard;
+      gameData.subBoardWinners = room.subBoardWinners;
+    }
+    if (room.gameType === 'chain') {
+      gameData.turnOrder = room.turnOrder;
+      gameData.chainMoveCount = room.chainMoveCount;
+    }
+    if (room.gameType === 'memory') {
+      gameData.memoryState = room.memoryState;
+    }
+
+    callback({ code: roomCode, role: assignedRole, gameData });
     io.to(roomCode).emit("gameStart", room);
-    startTurnTimer(lobbyCode, roomCode);
+    // Start timer when we reach minimum 2 players
+    if (Object.keys(room.players).length >= 2) {
+      startTurnTimer(lobbyCode, roomCode);
+    }
     broadcastLobbyState(lobbyCode);
   });
 
@@ -269,15 +372,45 @@ io.on('connection', (socket) => {
       moveResult = makeDotsBoxesMove(room.board, index, player);
     } else if (room.gameType === 'nim') {
       moveResult = makeNimMove(room.board, index, player);
+    } else if (room.gameType === 'uttt') {
+      const utttState = { board: room.board, activeBoard: room.activeBoard, subBoardWinners: room.subBoardWinners };
+      moveResult = makeUTTTMove(utttState, index, player);
+    } else if (room.gameType === 'chain') {
+      moveResult = makeChainMove(room.board, index, player, room.turnOrder, room.chainMoveCount);
+    } else if (room.gameType === 'memory') {
+      moveResult = makeMemoryMove(room.memoryState, index, player);
     } else {
       moveResult = makeTicTacToeMove(room.board, index, player);
     }
 
     if (moveResult.valid) {
-      room.board = moveResult.board;
+      // Update board for most games
+      if (room.gameType === 'memory') {
+        room.memoryState = {
+          cards: moveResult.cards,
+          revealed: moveResult.revealed,
+          matchedBy: moveResult.matchedBy,
+          flippedIndices: moveResult.flippedIndices,
+          scores: moveResult.scores,
+          turnOrder: moveResult.turnOrder,
+          moveCount: moveResult.moveCount,
+        };
+      } else {
+        room.board = moveResult.board;
+      }
+
       if (room.gameType === 'checkers') {
         room.mustMoveIndex = moveResult.mustMoveIndex || null;
       }
+      if (room.gameType === 'uttt') {
+        room.activeBoard = moveResult.activeBoard;
+        room.subBoardWinners = moveResult.subBoardWinners;
+      }
+      if (room.gameType === 'chain') {
+        room.turnOrder = moveResult.turnOrder;
+        room.chainMoveCount = moveResult.moveCount;
+      }
+
       const result = moveResult.result;
 
       if (result) {
@@ -289,6 +422,31 @@ io.on('connection', (socket) => {
         } else {
           room.turn = moveResult.nextTurn || (player === "X" ? "O" : "X");
         }
+
+        // Handle memory flip-back on server
+        if (room.gameType === 'memory' && moveResult.needsFlipBack) {
+          const flipIndices = moveResult.flipBackIndices;
+          const nextTurn = moveResult.nextTurn;
+          // Emit the current state with flipped cards visible
+          io.to(code).emit("gameUpdate", room);
+          // After delay, flip back
+          setTimeout(() => {
+            const currentRoom = lobbies[lobbyCode]?.rooms[code];
+            if (currentRoom && currentRoom.memoryState) {
+              const newRevealed = [...currentRoom.memoryState.revealed];
+              for (const idx of flipIndices) {
+                if (newRevealed[idx] === 'flipped') newRevealed[idx] = 'hidden';
+              }
+              currentRoom.memoryState.revealed = newRevealed;
+              currentRoom.memoryState.flippedIndices = [];
+              currentRoom.turn = nextTurn;
+              io.to(code).emit("gameUpdate", currentRoom);
+              startTurnTimer(lobbyCode, code);
+            }
+          }, 1500);
+          return; // Don't emit gameUpdate again below
+        }
+
         startTurnTimer(lobbyCode, code);
       }
       io.to(code).emit("gameUpdate", room);
@@ -303,9 +461,22 @@ io.on('connection', (socket) => {
     const room = lobbies[lobbyCode]?.rooms[code];
     if (room) {
       room.board = getBoardForGameType(room.gameType);
-      room.turn = room.gameType === 'checkers' ? 'b' : 'X';
+      room.turn = room.gameType === 'checkers' ? 'b' : room.gameType === 'chain' ? CHAIN_COLORS[0] : 'X';
       room.mustMoveIndex = null;
       room.result = null;
+      // Reset extra state
+      if (room.gameType === 'uttt') {
+        room.activeBoard = null;
+        room.subBoardWinners = Array(9).fill(null);
+      }
+      if (room.gameType === 'chain') {
+        room.chainMoveCount = 0;
+      }
+      if (room.gameType === 'memory') {
+        const playerCount = Object.keys(room.players).length;
+        room.memoryState = getInitialMemoryState(playerCount);
+        room.turn = room.memoryState.turnOrder[0];
+      }
       io.to(code).emit("gameUpdate", room);
       if (Object.keys(room.players).length >= 2) {
         startTurnTimer(lobbyCode, code);
@@ -329,10 +500,23 @@ io.on('connection', (socket) => {
         room.seriesWinner = null;
       }
       room.board = getBoardForGameType(room.gameType);
-      room.turn = room.gameType === 'checkers' ? 'b' : 'X';
+      room.turn = room.gameType === 'checkers' ? 'b' : room.gameType === 'chain' ? CHAIN_COLORS[0] : 'X';
       room.mustMoveIndex = null;
       room.result = null;
       room.rematchRequests = [];
+      // Reset extra state for rematch
+      if (room.gameType === 'uttt') {
+        room.activeBoard = null;
+        room.subBoardWinners = Array(9).fill(null);
+      }
+      if (room.gameType === 'chain') {
+        room.chainMoveCount = 0;
+      }
+      if (room.gameType === 'memory') {
+        const playerCount = Object.keys(room.players).length;
+        room.memoryState = getInitialMemoryState(playerCount);
+        room.turn = room.memoryState.turnOrder[0];
+      }
       io.to(code).emit("gameUpdate", room);
       startTurnTimer(lobbyCode, code);
     } else {
@@ -364,9 +548,19 @@ io.on('connection', (socket) => {
     socket.join(roomCode);
     console.log(`Spectator joined room ${roomCode}`);
 
-    callback({
-      gameData: { board: room.board, turn: room.turn, score: room.score, playerNames: room.playerNames, result: room.result || null, gameType: room.gameType || 'tictactoe', timeLeft: room.timeLeft || null, seriesLength: room.seriesLength || 0, seriesWinner: room.seriesWinner || null, chatHistory: room.chatHistory || [] }
-    });
+    const spectateData = { board: room.board, turn: room.turn, score: room.score, playerNames: room.playerNames, result: room.result || null, gameType: room.gameType || 'tictactoe', timeLeft: room.timeLeft || null, seriesLength: room.seriesLength || 0, seriesWinner: room.seriesWinner || null, chatHistory: room.chatHistory || [] };
+    if (room.gameType === 'uttt') {
+      spectateData.activeBoard = room.activeBoard;
+      spectateData.subBoardWinners = room.subBoardWinners;
+    }
+    if (room.gameType === 'chain') {
+      spectateData.turnOrder = room.turnOrder;
+      spectateData.chainMoveCount = room.chainMoveCount;
+    }
+    if (room.gameType === 'memory') {
+      spectateData.memoryState = room.memoryState;
+    }
+    callback({ gameData: spectateData });
     broadcastLobbyState(lobbyCode);
   });
 
