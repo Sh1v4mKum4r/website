@@ -119,7 +119,8 @@ function Game() {
           setGameStarted(true);
           if (gameDataFromState.chatHistory) setGameChatMessages(gameDataFromState.chatHistory);
         }
-      } else if (roleFromState === 'O' && gameDataFromState) {
+      } else if (gameDataFromState) {
+        // Any joining player (O, chain colors G/B/Y/P/C, memory P3/P4) gets initial state
         setGameData(gameDataFromState);
         setGameStarted(true);
         if (gameDataFromState.chatHistory) setGameChatMessages(gameDataFromState.chatHistory);
