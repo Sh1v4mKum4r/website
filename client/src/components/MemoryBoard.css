@@ -1,0 +1,189 @@
+/* ===== Memory Board Container ===== */
+.memory-board {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 24px;
+    background-color: var(--bg-secondary);
+    border-radius: 10px;
+    border: 4px solid var(--accent);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    width: fit-content;
+    margin: 20px auto;
+}
+
+/* ===== 4x5 Grid ===== */
+.memory-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+}
+
+/* ===== Card Wrapper ===== */
+.memory-card {
+    width: 80px;
+    height: 100px;
+    perspective: 600px;
+    cursor: default;
+}
+
+.memory-card.clickable {
+    cursor: pointer;
+}
+
+/* ===== Card Inner (handles 3D flip) ===== */
+.memory-card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.5s ease;
+    transform-style: preserve-3d;
+}
+
+.memory-card.flipped .memory-card-inner,
+.memory-card.matched .memory-card-inner {
+    transform: rotateY(180deg);
+}
+
+/* ===== Card Faces (shared) ===== */
+.memory-card-back,
+.memory-card-front {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    border-radius: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+/* ===== Card Back (face-down) ===== */
+.memory-card-back {
+    background: var(--bg-primary);
+    border: 2px solid var(--accent);
+    background-image:
+        radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+        radial-gradient(circle at 75% 75%, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+    background-size: 12px 12px;
+}
+
+.memory-card-question {
+    font-size: 28px;
+    font-weight: bold;
+    color: var(--accent);
+    opacity: 0.7;
+    user-select: none;
+}
+
+.memory-card.clickable:hover .memory-card-back {
+    border-color: var(--accent-secondary);
+    box-shadow: 0 0 14px var(--accent-secondary), 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.memory-card.clickable:active .memory-card-inner {
+    transform: scale(0.95);
+}
+
+/* ===== Card Front (face-up) ===== */
+.memory-card-front {
+    background: var(--bg-primary);
+    border: 2px solid var(--accent);
+    transform: rotateY(180deg);
+}
+
+.memory-card-emoji {
+    font-size: 36px;
+    line-height: 1;
+    user-select: none;
+}
+
+/* ===== Matched Card Styling ===== */
+.memory-card.matched .memory-card-front {
+    opacity: 0.7;
+}
+
+/* Per-player match border colors */
+.memory-card.matched.player-x .memory-card-front {
+    border-color: cyan;
+    box-shadow: 0 0 8px rgba(0, 255, 255, 0.3), 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.memory-card.matched.player-o .memory-card-front {
+    border-color: magenta;
+    box-shadow: 0 0 8px rgba(255, 0, 255, 0.3), 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.memory-card.matched.player-p1 .memory-card-front {
+    border-color: cyan;
+    box-shadow: 0 0 8px rgba(0, 255, 255, 0.3), 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.memory-card.matched.player-p2 .memory-card-front {
+    border-color: magenta;
+    box-shadow: 0 0 8px rgba(255, 0, 255, 0.3), 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.memory-card.matched.player-p3 .memory-card-front {
+    border-color: #ffd700;
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.3), 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.memory-card.matched.player-p4 .memory-card-front {
+    border-color: #00ff88;
+    box-shadow: 0 0 8px rgba(0, 255, 136, 0.3), 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 600px) {
+    .memory-board {
+        padding: 16px;
+    }
+
+    .memory-grid {
+        gap: 8px;
+    }
+
+    .memory-card {
+        width: 60px;
+        height: 78px;
+    }
+
+    .memory-card-question {
+        font-size: 22px;
+    }
+
+    .memory-card-emoji {
+        font-size: 28px;
+    }
+}
+
+@media (max-width: 400px) {
+    .memory-board {
+        padding: 10px;
+    }
+
+    .memory-grid {
+        gap: 6px;
+    }
+
+    .memory-card {
+        width: 50px;
+        height: 65px;
+    }
+
+    .memory-card-question {
+        font-size: 18px;
+    }
+
+    .memory-card-emoji {
+        font-size: 22px;
+    }
+
+    .memory-card-back,
+    .memory-card-front {
+        border-radius: 8px;
+    }
+}
