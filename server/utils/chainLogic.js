@@ -1,14 +1,14 @@
 // Chain Reaction Game Logic
-// Board: Array(54) — 6 rows x 9 cols. Index = row * 9 + col.
+// Board: Array(80) — 10 rows x 8 cols. Index = row * 8 + col.
 // Each cell: null (empty) or string like 'R2' (Red player, 2 atoms)
 // Player colors: R=Red, G=Green, B=Blue, Y=Yellow, P=Purple, C=Cyan
 
 const CHAIN_COLORS = ['R', 'G', 'B', 'Y', 'P', 'C'];
-const ROWS = 6;
-const COLS = 9;
+const ROWS = 10;
+const COLS = 8;
 
 const getInitialChainBoard = () => {
-    return Array(54).fill(null);
+    return Array(ROWS * COLS).fill(null);
 };
 
 const getCriticalMass = (index) => {
@@ -45,7 +45,7 @@ const encodeCell = (player, atoms) => {
 
 const makeChainMove = (board, index, turn, turnOrder, moveCount) => {
     // Validate index
-    if (index < 0 || index >= 54) return { valid: false };
+    if (index < 0 || index >= ROWS * COLS) return { valid: false };
 
     // Validate turn is in turnOrder
     if (!turnOrder.includes(turn)) return { valid: false };
@@ -116,7 +116,7 @@ const makeChainMove = (board, index, turn, turnOrder, moveCount) => {
         for (const color of newTurnOrder) {
             atomCounts[color] = 0;
         }
-        for (let i = 0; i < 54; i++) {
+        for (let i = 0; i < ROWS * COLS; i++) {
             const c = parseCell(newBoard[i]);
             if (c.player && atomCounts.hasOwnProperty(c.player)) {
                 atomCounts[c.player] += c.atoms;
@@ -167,4 +167,4 @@ const makeChainMove = (board, index, turn, turnOrder, moveCount) => {
     };
 };
 
-module.exports = { getInitialChainBoard, makeChainMove, CHAIN_COLORS };
+module.exports = { getInitialChainBoard, makeChainMove, CHAIN_COLORS, ROWS, COLS };
