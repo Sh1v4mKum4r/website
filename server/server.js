@@ -460,15 +460,26 @@ io.on('connection', (socket) => {
       if (playerCount === 1) assignedRole = 'O';
       else if (playerCount === 2) assignedRole = 'P3';
       else assignedRole = 'P4';
-      // Rebuild memory state with turnOrder matching actual player roles
+      // Only do a full re-init when the 2nd player joins (first join into an existing room).
+      // For 3rd/4th players, preserve existing cards/revealed and only extend turnOrder & scores.
       const allRoles = [...Object.values(room.players), assignedRole];
-      const memState = getInitialMemoryState(allRoles.length);
-      // Override turnOrder and scores to match actual assigned roles
-      memState.turnOrder = allRoles;
-      memState.scores = {};
-      for (const r of allRoles) memState.scores[r] = 0;
-      room.memoryState = memState;
-      room.turn = memState.turnOrder[0];
+      if (playerCount === 1) {
+        // 2nd player joins: safe to (re)initialize from scratch since no moves made yet
+        const memState = getInitialMemoryState(allRoles.length);
+        memState.turnOrder = allRoles;
+        memState.scores = {};
+        for (const r of allRoles) memState.scores[r] = 0;
+        room.memoryState = memState;
+        room.turn = memState.turnOrder[0];
+      } else {
+        // 3rd or 4th player joining — preserve existing game state, just add them in
+        if (room.memoryState) {
+          room.memoryState.turnOrder = allRoles;
+          room.memoryState.scores = room.memoryState.scores || {};
+          room.memoryState.scores[assignedRole] = 0;
+        }
+        // turn stays as-is
+      }
     } else {
       assignedRole = 'O';
     }
@@ -575,14 +586,23 @@ io.on('connection', (socket) => {
       if (playerCount === 1) assignedRole = 'O';
       else if (playerCount === 2) assignedRole = 'P3';
       else assignedRole = 'P4';
-      // Rebuild memory state with new player count
+      // Same fix as joinRoom: only do a full re-init for the 2nd player (bot joining fresh room)
       const allRoles = [...Object.values(room.players), assignedRole];
-      const memState = getInitialMemoryState(allRoles.length);
-      memState.turnOrder = allRoles;
-      memState.scores = {};
-      for (const r of allRoles) memState.scores[r] = 0;
-      room.memoryState = memState;
-      room.turn = memState.turnOrder[0];
+      if (playerCount === 1) {
+        const memState = getInitialMemoryState(allRoles.length);
+        memState.turnOrder = allRoles;
+        memState.scores = {};
+        for (const r of allRoles) memState.scores[r] = 0;
+        room.memoryState = memState;
+        room.turn = memState.turnOrder[0];
+      } else {
+        // 3rd or 4th bot joining — preserve existing game state
+        if (room.memoryState) {
+          room.memoryState.turnOrder = allRoles;
+          room.memoryState.scores = room.memoryState.scores || {};
+          room.memoryState.scores[assignedRole] = 0;
+        }
+      }
     } else {
       assignedRole = 'O';
     }
@@ -802,7 +822,7 @@ io.on('connection', (socket) => {
         delete lobby.rooms[roomCode];
       } else {
         clearTurnTimer(roomCode);
-        io.to(roomCode).emit("opponentLeft");
+        io.to(roomCode).emit("opponentLeft", { voluntary: true });
       }
       socket.leave(roomCode);
     }
@@ -1133,6 +1153,19 @@ io.on('connection', (socket) => {
           if (!room.playerNames.includes(name)) room.playerNames.push(name);
           socket.join(roomCode);
           io.to(roomCode).emit("playerReconnected", { name });
+          // Send reconnecting player the full current room state (including result if game ended)
+          // For word games, use their dedicated state events to avoid leaking secret words
+          if (room.gameType === 'wordle' && room.wordGameState) {
+            const safeState = { ...room.wordGameState };
+            if (!safeState.result) safeState.word = undefined;
+            socket.emit('wordleStateUpdate', { state: safeState });
+          } else if (room.gameType === 'imposter' && room.wordGameState) {
+            socket.emit('imposterStateUpdate', room.wordGameState);
+          } else if (room.gameType === 'scribble' && room.wordGameState) {
+            socket.emit('scribbleStateUpdate', room.wordGameState);
+          } else {
+            socket.emit("gameUpdate", room);
+          }
           // Restart timer if game is active
           if (!room.result && Object.keys(room.players).length >= 2) {
             startTurnTimer(lobbyCode, roomCode);

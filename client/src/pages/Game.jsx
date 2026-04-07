@@ -94,6 +94,7 @@ function Game() {
 
   // F11: Reconnection
   const [connectionStatus, setConnectionStatus] = useState(null); // null | 'opponent_disconnected' | 'reconnecting'
+  const [reconnectCountdown, setReconnectCountdown] = useState(30);
   const [seriesWinner, setSeriesWinner] = useState(null);
 
   const myRoleRef = useRef(myRole);
@@ -145,8 +146,8 @@ function Game() {
       setRematchState(null);
     });
 
-    socket.on("opponentLeft", () => {
-      setGameMessage("Opponent left the game.");
+    socket.on("opponentLeft", ({ voluntary } = {}) => {
+      setGameMessage(voluntary ? "Opponent exited to lobby." : "Opponent left the game.");
       setResult({ winner: "opponentLeft" });
       setTimeLeft(null);
       setConnectionStatus(null);
@@ -158,11 +159,13 @@ function Game() {
     // F11: Reconnection events
     socket.on("opponentDisconnected", ({ name }) => {
       setConnectionStatus('opponent_disconnected');
+      setReconnectCountdown(30);
       setGameMessage(`${name} disconnected — waiting for reconnection...`);
     });
 
     socket.on("playerReconnected", ({ name }) => {
       setConnectionStatus(null);
+      setReconnectCountdown(30);
       setGameMessage(`${name} reconnected!`);
       setTimeout(() => {
         if (!result) {
@@ -202,6 +205,35 @@ function Game() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomCode, location.state, navigate]);
+
+  // F11: Reconnect countdown timer — single interval, ref-based to avoid dep churn
+  const reconnectIntervalRef = useRef(null);
+  useEffect(() => {
+    if (connectionStatus === 'opponent_disconnected') {
+      setReconnectCountdown(30);
+      reconnectIntervalRef.current = setInterval(() => {
+        setReconnectCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(reconnectIntervalRef.current);
+            reconnectIntervalRef.current = null;
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      if (reconnectIntervalRef.current) {
+        clearInterval(reconnectIntervalRef.current);
+        reconnectIntervalRef.current = null;
+      }
+    }
+    return () => {
+      if (reconnectIntervalRef.current) {
+        clearInterval(reconnectIntervalRef.current);
+        reconnectIntervalRef.current = null;
+      }
+    };
+  }, [connectionStatus]);
 
   // F4: Local mode timer
   useEffect(() => {
@@ -959,6 +991,10 @@ function Game() {
           <div className="reconnection-message">
             <h3>⚠️ Opponent Disconnected</h3>
             <p>Waiting for them to reconnect...</p>
+            <div className="reconnect-countdown">
+              <span className={reconnectCountdown <= 10 ? 'critical' : ''}>{reconnectCountdown}s</span>
+              <span className="reconnect-label"> remaining</span>
+            </div>
           </div>
         </div>
       )}
