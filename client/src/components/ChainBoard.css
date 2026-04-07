@@ -1,18 +1,9 @@
-/* Chain Reaction Board — 9x9 grid, cell size matches UTTT */
-
-.chain-board-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    margin: 20px auto;
-    width: 100%;
-    max-width: 800px;
-}
+/* Chain Reaction Board — 9x9 grid, same sizing pattern as Othello */
 
 .chain-turn-indicator {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     font-size: 0.95rem;
     color: var(--text-secondary, #aaa);
@@ -32,9 +23,10 @@
     grid-template-rows: repeat(9, 1fr);
     gap: 2px;
     background-color: var(--accent, #7c3aed);
-    width: min(800px, calc(100vw - 60px));
-    height: min(800px, calc(100vw - 60px));
-    margin: 0 auto;
+    width: 100%;
+    max-width: 800px;
+    aspect-ratio: 1 / 1;
+    margin: 20px auto;
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 10px 30px var(--shadow-color, rgba(0, 0, 0, 0.5));
@@ -100,27 +92,12 @@
 }
 
 /* Atom sizing based on count */
-.chain-atoms.atoms-1 .chain-atom {
-    width: 55%;
-    height: 55%;
-}
+.chain-atoms.atoms-1 .chain-atom { width: 55%; height: 55%; }
+.chain-atoms.atoms-2 .chain-atom { width: 40%; height: 40%; }
+.chain-atoms.atoms-3 .chain-atom { width: 32%; height: 32%; }
+.chain-atoms.atoms-many .chain-atom { width: 28%; height: 28%; }
 
-.chain-atoms.atoms-2 .chain-atom {
-    width: 40%;
-    height: 40%;
-}
-
-.chain-atoms.atoms-3 .chain-atom {
-    width: 32%;
-    height: 32%;
-}
-
-.chain-atoms.atoms-many .chain-atom {
-    width: 28%;
-    height: 28%;
-}
-
-/* Player colors for atoms — X=red, O=blue, Y=yellow, G=green, P=purple, C=cyan */
+/* Player colors for atoms */
 .chain-atom.color-X { background-color: #ef4444; color: #ef4444; }
 .chain-atom.color-O { background-color: #3b82f6; color: #3b82f6; }
 .chain-atom.color-Y { background-color: #eab308; color: #eab308; }
@@ -142,28 +119,16 @@
 }
 
 @keyframes atom-appear {
-    0% {
-        transform: scale(0);
-        opacity: 0;
-    }
-    100% {
-        transform: scale(1);
-        opacity: 1;
-    }
+    0% { transform: scale(0); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
 }
 
 @keyframes atom-pulse {
-    0% {
-        transform: scale(1);
-        box-shadow: 0 0 6px currentColor;
-    }
-    100% {
-        transform: scale(1.2);
-        box-shadow: 0 0 14px currentColor, 0 0 24px currentColor;
-    }
+    0% { transform: scale(1); box-shadow: 0 0 6px currentColor; }
+    100% { transform: scale(1.2); box-shadow: 0 0 14px currentColor, 0 0 24px currentColor; }
 }
 
-/* Player scoreboard under the board */
+/* Player scoreboard */
 .chain-players {
     display: flex;
     gap: 12px;
@@ -185,69 +150,11 @@
     transition: opacity 0.2s;
 }
 
-.chain-player-badge.active {
-    opacity: 1;
-    border-color: var(--accent, #7c3aed);
-}
-
-.chain-player-badge.current-turn {
-    opacity: 1;
-    box-shadow: 0 0 8px var(--accent, #7c3aed);
-}
+.chain-player-badge.active { opacity: 1; border-color: var(--accent, #7c3aed); }
+.chain-player-badge.current-turn { opacity: 1; box-shadow: 0 0 8px var(--accent, #7c3aed); }
 
 .chain-player-color {
     width: 10px;
     height: 10px;
     border-radius: 50%;
-}
-
-/* Responsive — tablets */
-@media (max-width: 600px) {
-    .chain-board {
-        width: calc(100vw - 30px);
-        height: calc(100vw - 30px);
-        gap: 1px;
-        border-width: 2px;
-    }
-
-    .chain-atoms.atoms-1 .chain-atom {
-        width: 50%;
-        height: 50%;
-    }
-
-    .chain-atoms.atoms-2 .chain-atom {
-        width: 36%;
-        height: 36%;
-    }
-
-    .chain-atoms.atoms-3 .chain-atom {
-        width: 28%;
-        height: 28%;
-    }
-
-    .chain-atoms.atoms-many .chain-atom {
-        width: 24%;
-        height: 24%;
-    }
-}
-
-/* Responsive — phones */
-@media (max-width: 400px) {
-    .chain-board {
-        width: calc(100vw - 20px);
-        height: calc(100vw - 20px);
-    }
-
-    .chain-board-wrapper {
-        gap: 8px;
-    }
-
-    .chain-turn-indicator {
-        font-size: 0.85rem;
-    }
-
-    .chain-player-badge {
-        font-size: 0.75rem;
-        padding: 3px 8px;
-    }
 }
