@@ -24,6 +24,7 @@ function Sidebar({ isOpen, onClose }) {
   const { setLobbyCode: setContextLobbyCode, setPlayerName: setContextPlayerName } = useLobby();
 
   const handleNewMessage = useCallback((msg) => {
+    if (msg.room && !msg.room.startsWith('lobby:')) return;
     setChatMessages((prev) => [...prev, msg]);
   }, []);
 
@@ -142,8 +143,8 @@ function Sidebar({ isOpen, onClose }) {
             )}
 
             {mode && (
-              <div className="sidebar-form">
-                <button className="back-link" onClick={() => { setMode(null); setError(''); }}>← Back</button>
+              <form className="sidebar-form" onSubmit={(e) => { e.preventDefault(); mode === 'create' ? handleCreateLobby() : handleJoinLobby(); }}>
+                <button type="button" className="back-link" onClick={() => { setMode(null); setError(''); }}>← Back</button>
                 <h3>{mode === 'create' ? 'New Lobby' : 'Join Lobby'}</h3>
 
                 <input
@@ -168,12 +169,12 @@ function Sidebar({ isOpen, onClose }) {
                 {error && <p className="error-text">{error}</p>}
 
                 <button
+                  type="submit"
                   className="primary-btn full-width"
-                  onClick={mode === 'create' ? handleCreateLobby : handleJoinLobby}
                 >
                   {mode === 'create' ? 'Create & Enter' : 'Join'}
                 </button>
-              </div>
+              </form>
             )}
           </div>
         )}

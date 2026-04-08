@@ -142,6 +142,55 @@ const checkWinner = (board) => {
   return null;
 };
 
+// Filter imposter state per-player: hide secrets except during reveal
+const getSafeImposterState = (state, playerId) => {
+  if (!state) return state;
+  const safe = { ...state };
+  safe.myWord = state.words?.[playerId] || '';
+  safe.isImposter = playerId === state.imposterPlayerId;
+  delete safe.words;
+  if (state.phase !== 'reveal') {
+    delete safe.imposterPlayerId;
+    delete safe.majorityWord;
+    delete safe.imposterWord;
+  }
+  return safe;
+};
+
+// Filter scribble state per-player: hide word from non-drawers
+const getSafeScribbleState = (state, playerId) => {
+  if (!state) return state;
+  const safe = { ...state };
+  const drawerId = state.drawOrder?.[state.currentDrawerIndex];
+  if (playerId !== drawerId) {
+    safe.wordLength = state.word?.length || 0;
+    delete safe.word;
+  }
+  return safe;
+};
+
+// Broadcast imposter state to all players (filtered per-player)
+const broadcastImposterState = (roomCode, room) => {
+  const playerIds = Object.keys(room.players);
+  for (const pid of playerIds) {
+    const playerSocket = io.sockets.sockets.get(pid);
+    if (playerSocket) {
+      playerSocket.emit('imposterStateUpdate', getSafeImposterState(room.wordGameState, pid));
+    }
+  }
+};
+
+// Broadcast scribble state to all players (filtered per-player)
+const broadcastScribbleState = (roomCode, room) => {
+  const playerIds = Object.keys(room.players);
+  for (const pid of playerIds) {
+    const playerSocket = io.sockets.sockets.get(pid);
+    if (playerSocket) {
+      playerSocket.emit('scribbleStateUpdate', getSafeScribbleState(room.wordGameState, pid));
+    }
+  }
+};
+
 const broadcastLobbyState = (lobbyCode) => {
   const lobby = lobbies[lobbyCode];
   if (!lobby) return;
@@ -340,13 +389,6 @@ io.on('connection', (socket) => {
 
   // Create a game room inside the lobby
   socket.on("createRoom", ({ gameType = "tictactoe", seriesLength = 0 } = {}, callback) => {
-    // If first arg is function, it means no options passed (old client)
-    if (typeof arguments[0] === 'function') {
-      callback = arguments[0];
-      gameType = "tictactoe";
-      seriesLength = 0;
-    }
-
     const lobbyCode = socketToLobby[socket.id];
     if (!lobbyCode) return callback({ error: "Not in a lobby" });
 
@@ -460,15 +502,26 @@ io.on('connection', (socket) => {
       if (playerCount === 1) assignedRole = 'O';
       else if (playerCount === 2) assignedRole = 'P3';
       else assignedRole = 'P4';
-      // Rebuild memory state with turnOrder matching actual player roles
+      // Only do a full re-init when the 2nd player joins (first join into an existing room).
+      // For 3rd/4th players, preserve existing cards/revealed and only extend turnOrder & scores.
       const allRoles = [...Object.values(room.players), assignedRole];
-      const memState = getInitialMemoryState(allRoles.length);
-      // Override turnOrder and scores to match actual assigned roles
-      memState.turnOrder = allRoles;
-      memState.scores = {};
-      for (const r of allRoles) memState.scores[r] = 0;
-      room.memoryState = memState;
-      room.turn = memState.turnOrder[0];
+      if (playerCount === 1) {
+        // 2nd player joins: safe to (re)initialize from scratch since no moves made yet
+        const memState = getInitialMemoryState(allRoles.length);
+        memState.turnOrder = allRoles;
+        memState.scores = {};
+        for (const r of allRoles) memState.scores[r] = 0;
+        room.memoryState = memState;
+        room.turn = memState.turnOrder[0];
+      } else {
+        // 3rd or 4th player joining — preserve existing game state, just add them in
+        if (room.memoryState) {
+          room.memoryState.turnOrder = allRoles;
+          room.memoryState.scores = room.memoryState.scores || {};
+          room.memoryState.scores[assignedRole] = 0;
+        }
+        // turn stays as-is
+      }
     } else {
       assignedRole = 'O';
     }
@@ -478,6 +531,24 @@ io.on('connection', (socket) => {
 
     socket.join(roomCode);
     console.log(`${playerName} joined room ${roomCode}`);
+
+    // Initialize word games BEFORE callback so joining player gets state immediately
+    const playerCount2 = Object.keys(room.players).length;
+    if (playerCount2 >= 2 && (room.gameType === 'scribble' || room.gameType === 'imposter' || room.gameType === 'wordle')) {
+      const playerIds = Object.keys(room.players);
+      const pNames = {};
+      for (const pid of playerIds) {
+        const lobbyPlayer = lobby.players.find(p => p.id === pid);
+        pNames[pid] = lobbyPlayer?.name || 'Unknown';
+      }
+      if (room.gameType === 'scribble') {
+        room.wordGameState = getInitialScribbleState(playerIds, pNames);
+      } else if (room.gameType === 'imposter') {
+        room.wordGameState = getInitialImposterState(playerIds, pNames);
+      } else if (room.gameType === 'wordle') {
+        room.wordGameState = getInitialWordleState();
+      }
+    }
 
     const gameData = {
       board: room.board, turn: room.turn, score: room.score,
@@ -496,41 +567,35 @@ io.on('connection', (socket) => {
     if (room.gameType === 'memory') {
       gameData.memoryState = room.memoryState;
     }
+    // Include filtered word game state for joining player
+    if (room.wordGameState) {
+      if (room.gameType === 'scribble') {
+        gameData.wordGameState = getSafeScribbleState(room.wordGameState, socket.id);
+        gameData.wordGameType = 'scribble';
+      } else if (room.gameType === 'imposter') {
+        gameData.wordGameState = getSafeImposterState(room.wordGameState, socket.id);
+        gameData.wordGameType = 'imposter';
+      } else if (room.gameType === 'wordle') {
+        gameData.wordGameState = { ...room.wordGameState, word: undefined };
+        gameData.wordGameType = 'wordle';
+      }
+    }
 
     callback({ code: roomCode, role: assignedRole, gameData });
-    io.to(roomCode).emit("gameStart", room);
-    // Start timer when we reach minimum 2 players
-    const playerCount2 = Object.keys(room.players).length;
-    if (playerCount2 >= 2) {
-      // Auto-start word games when enough players join
-      if (room.gameType === 'scribble' || room.gameType === 'imposter' || room.gameType === 'wordle') {
-        const playerIds = Object.keys(room.players);
-        const pNames = {};
-        for (const pid of playerIds) {
-          const lobbyPlayer = lobby.players.find(p => p.id === pid);
-          pNames[pid] = lobbyPlayer?.name || 'Unknown';
-        }
-        if (room.gameType === 'scribble') {
-          room.wordGameState = getInitialScribbleState(playerIds, pNames);
-          io.to(roomCode).emit('scribbleStateUpdate', room.wordGameState);
-        } else if (room.gameType === 'imposter') {
-          room.wordGameState = getInitialImposterState(playerIds, pNames);
-          // Send each player their own view (with their personal word)
-          for (const pid of playerIds) {
-            const playerSocket = io.sockets.sockets.get(pid);
-            if (playerSocket) {
-              playerSocket.emit('imposterStateUpdate', room.wordGameState);
-            }
-          }
-        } else if (room.gameType === 'wordle') {
-          room.wordGameState = getInitialWordleState();
-          // Send state without the word to players
-          const safeState = { ...room.wordGameState, word: undefined };
-          io.to(roomCode).emit('wordleStateUpdate', { state: safeState });
-        }
-      } else {
-        startTurnTimer(lobbyCode, roomCode);
+    io.to(roomCode).emit("gameStart", { ...room, wordGameState: undefined });
+
+    // Broadcast word game state to other players (joining player got it via callback)
+    if (playerCount2 >= 2 && room.wordGameState) {
+      if (room.gameType === 'scribble') {
+        broadcastScribbleState(roomCode, room);
+      } else if (room.gameType === 'imposter') {
+        broadcastImposterState(roomCode, room);
+      } else if (room.gameType === 'wordle') {
+        const safeState = { ...room.wordGameState, word: undefined };
+        io.to(roomCode).emit('wordleStateUpdate', { state: safeState });
       }
+    } else if (playerCount2 >= 2) {
+      startTurnTimer(lobbyCode, roomCode);
     }
     broadcastLobbyState(lobbyCode);
   });
@@ -575,14 +640,23 @@ io.on('connection', (socket) => {
       if (playerCount === 1) assignedRole = 'O';
       else if (playerCount === 2) assignedRole = 'P3';
       else assignedRole = 'P4';
-      // Rebuild memory state with new player count
+      // Same fix as joinRoom: only do a full re-init for the 2nd player (bot joining fresh room)
       const allRoles = [...Object.values(room.players), assignedRole];
-      const memState = getInitialMemoryState(allRoles.length);
-      memState.turnOrder = allRoles;
-      memState.scores = {};
-      for (const r of allRoles) memState.scores[r] = 0;
-      room.memoryState = memState;
-      room.turn = memState.turnOrder[0];
+      if (playerCount === 1) {
+        const memState = getInitialMemoryState(allRoles.length);
+        memState.turnOrder = allRoles;
+        memState.scores = {};
+        for (const r of allRoles) memState.scores[r] = 0;
+        room.memoryState = memState;
+        room.turn = memState.turnOrder[0];
+      } else {
+        // 3rd or 4th bot joining — preserve existing game state
+        if (room.memoryState) {
+          room.memoryState.turnOrder = allRoles;
+          room.memoryState.scores = room.memoryState.scores || {};
+          room.memoryState.scores[assignedRole] = 0;
+        }
+      }
     } else {
       assignedRole = 'O';
     }
@@ -597,7 +671,7 @@ io.on('connection', (socket) => {
 
     console.log(`Bot ${botName} added to room ${roomCode}`);
 
-    io.to(roomCode).emit("gameStart", room);
+    io.to(roomCode).emit("gameStart", { ...room, wordGameState: undefined });
     // Start timer when we reach minimum 2 players
     if (Object.keys(room.players).length >= 2) {
       startTurnTimer(lobbyCode, roomCode);
@@ -802,7 +876,7 @@ io.on('connection', (socket) => {
         delete lobby.rooms[roomCode];
       } else {
         clearTurnTimer(roomCode);
-        io.to(roomCode).emit("opponentLeft");
+        io.to(roomCode).emit("opponentLeft", { voluntary: true });
       }
       socket.leave(roomCode);
     }
@@ -840,6 +914,7 @@ io.on('connection', (socket) => {
   // Chat
   socket.on("sendMessage", ({ room, message, sender }) => {
     const msg = {
+      room,
       message,
       sender,
       timestamp: new Date().toISOString(),
@@ -865,6 +940,32 @@ io.on('connection', (socket) => {
     callback({ chatHistory: room?.chatHistory || [] });
   });
 
+  // Request current game state (handles race when joining player misses gameStart/word game state)
+  socket.on("requestGameState", ({ roomCode }) => {
+    const lobbyCode = socketToLobby[socket.id];
+    if (!lobbyCode) return;
+    const room = lobbies[lobbyCode]?.rooms[roomCode];
+    if (!room) return;
+
+    // For word games, send filtered state through dedicated events
+    if (room.gameType === 'scribble' && room.wordGameState) {
+      socket.emit('scribbleStateUpdate', getSafeScribbleState(room.wordGameState, socket.id));
+    } else if (room.gameType === 'imposter' && room.wordGameState) {
+      socket.emit('imposterStateUpdate', getSafeImposterState(room.wordGameState, socket.id));
+    } else if (room.gameType === 'wordle' && room.wordGameState) {
+      const safeState = { ...room.wordGameState };
+      if (!safeState.result) safeState.word = undefined;
+      socket.emit('wordleStateUpdate', { state: safeState });
+    }
+
+    // Always send board game state too (handles missed gameStart)
+    if (Object.keys(room.players).length >= 2) {
+      const stateData = { ...room };
+      delete stateData.wordGameState;
+      socket.emit('gameUpdate', stateData);
+    }
+  });
+
   // ── Scribble Events ──
   socket.on("scribbleDraw", (data) => {
     // Broadcast drawing data to other players in the room
@@ -885,8 +986,8 @@ io.on('connection', (socket) => {
         message: `${playerName} guessed the word!`,
         correct: true,
       });
-      // Update state
-      io.to(roomCode).emit("scribbleStateUpdate", room.wordGameState);
+      // Update state (filtered per-player)
+      broadcastScribbleState(roomCode, room);
 
       // Check if all guessers have guessed
       const totalPlayers = room.wordGameState.drawOrder.length;
@@ -900,7 +1001,7 @@ io.on('connection', (socket) => {
           room.wordGameState = null;
         } else {
           room.wordGameState = nextState;
-          io.to(roomCode).emit("scribbleStateUpdate", room.wordGameState);
+          broadcastScribbleState(roomCode, room);
         }
       }
     } else if (!result.alreadyGuessed) {
@@ -926,7 +1027,7 @@ io.on('connection', (socket) => {
       pNames[pid] = lobbyPlayer?.name || 'Unknown';
     }
     room.wordGameState = getInitialScribbleState(playerIds, pNames);
-    io.to(roomCode).emit("scribbleStateUpdate", room.wordGameState);
+    broadcastScribbleState(roomCode, room);
   });
 
   socket.on("scribbleNextRound", ({ room: roomCode }) => {
@@ -943,7 +1044,7 @@ io.on('connection', (socket) => {
       room.wordGameState = null;
     } else {
       room.wordGameState = nextState;
-      io.to(roomCode).emit("scribbleStateUpdate", room.wordGameState);
+      broadcastScribbleState(roomCode, room);
     }
   });
 
@@ -962,13 +1063,7 @@ io.on('connection', (socket) => {
       pNames[pid] = lobbyPlayer?.name || 'Unknown';
     }
     room.wordGameState = getInitialImposterState(playerIds, pNames);
-    // Send state to each player
-    for (const pid of playerIds) {
-      const playerSocket = io.sockets.sockets.get(pid);
-      if (playerSocket) {
-        playerSocket.emit('imposterStateUpdate', room.wordGameState);
-      }
-    }
+    broadcastImposterState(roomCode, room);
   });
 
   socket.on("imposterClue", ({ room: roomCode, playerId, clue }) => {
@@ -981,14 +1076,7 @@ io.on('connection', (socket) => {
     if (!newState) return;
 
     room.wordGameState = newState;
-    // Broadcast to all players
-    const playerIds = Object.keys(room.players);
-    for (const pid of playerIds) {
-      const playerSocket = io.sockets.sockets.get(pid);
-      if (playerSocket) {
-        playerSocket.emit('imposterStateUpdate', room.wordGameState);
-      }
-    }
+    broadcastImposterState(roomCode, room);
   });
 
   socket.on("imposterVote", ({ room: roomCode, playerId, votedForId }) => {
@@ -1013,14 +1101,7 @@ io.on('connection', (socket) => {
       }
     }
 
-    // Broadcast updated state
-    const playerIds = Object.keys(room.players);
-    for (const pid of playerIds) {
-      const playerSocket = io.sockets.sockets.get(pid);
-      if (playerSocket) {
-        playerSocket.emit('imposterStateUpdate', room.wordGameState);
-      }
-    }
+    broadcastImposterState(roomCode, room);
   });
 
   socket.on("imposterNextRound", ({ room: roomCode }) => {
@@ -1032,13 +1113,7 @@ io.on('connection', (socket) => {
     const playerIds = Object.keys(room.players);
     const newState = imposterNextRound(room.wordGameState, playerIds);
     room.wordGameState = newState;
-
-    for (const pid of playerIds) {
-      const playerSocket = io.sockets.sockets.get(pid);
-      if (playerSocket) {
-        playerSocket.emit('imposterStateUpdate', room.wordGameState);
-      }
-    }
+    broadcastImposterState(roomCode, room);
   });
 
   socket.on("imposterPhaseAdvance", ({ room: roomCode }) => {
@@ -1050,13 +1125,7 @@ io.on('connection', (socket) => {
     // Only advance from discussion to voting
     if (room.wordGameState.phase === 'discussion') {
       room.wordGameState.phase = 'voting';
-      const playerIds = Object.keys(room.players);
-      for (const pid of playerIds) {
-        const playerSocket = io.sockets.sockets.get(pid);
-        if (playerSocket) {
-          playerSocket.emit('imposterStateUpdate', room.wordGameState);
-        }
-      }
+      broadcastImposterState(roomCode, room);
     }
   });
 
@@ -1133,6 +1202,19 @@ io.on('connection', (socket) => {
           if (!room.playerNames.includes(name)) room.playerNames.push(name);
           socket.join(roomCode);
           io.to(roomCode).emit("playerReconnected", { name });
+          // Send reconnecting player the full current room state (including result if game ended)
+          // For word games, use their dedicated state events to avoid leaking secret words
+          if (room.gameType === 'wordle' && room.wordGameState) {
+            const safeState = { ...room.wordGameState };
+            if (!safeState.result) safeState.word = undefined;
+            socket.emit('wordleStateUpdate', { state: safeState });
+          } else if (room.gameType === 'imposter' && room.wordGameState) {
+            socket.emit('imposterStateUpdate', getSafeImposterState(room.wordGameState, socket.id));
+          } else if (room.gameType === 'scribble' && room.wordGameState) {
+            socket.emit('scribbleStateUpdate', getSafeScribbleState(room.wordGameState, socket.id));
+          } else {
+            socket.emit("gameUpdate", room);
+          }
           // Restart timer if game is active
           if (!room.result && Object.keys(room.players).length >= 2) {
             startTurnTimer(lobbyCode, roomCode);
