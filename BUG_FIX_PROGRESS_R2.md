@@ -152,9 +152,19 @@ const handleNewGameChat = useCallback((msg) => {
 
 ---
 
-## STATUS: ALL 5 BUGS FIXED
+## BUG #6: [DONE] Game state race condition — joining player misses gameStart
 
-## Files to Modify:
+**Files:** `server/server.js`, `client/src/pages/Game.jsx`
+
+**Problem:** When Player 2 joins, server emits `gameStart` + word game state BEFORE Player 2's Game.jsx mounts listeners. Events are dropped. Word game players see "Waiting for game state..." forever.
+
+**Fix:** Added `requestGameState` server event. Game.jsx emits it after registering all listeners. Server responds with current filtered state. Also stripped `wordGameState` from `gameStart` to prevent secret leaks.
+
+---
+
+## STATUS: ALL 6 BUGS FIXED
+
+## Files Modified:
 1. `server/server.js` — Bugs #1, #2, #3, #4
 2. `client/src/components/ImposterGame.jsx` — Bug #1 client changes
 3. `client/src/components/ScribbleGame.jsx` — Bug #2 client changes

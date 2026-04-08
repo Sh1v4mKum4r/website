@@ -193,6 +193,12 @@ function Game() {
       setGameMessage("Rematch declined.");
     });
 
+    // Request current state after listeners are set up — handles race condition
+    // where joining player misses gameStart/word game state broadcasts
+    if (roomCode !== 'local') {
+      socket.emit('requestGameState', { roomCode });
+    }
+
     return () => {
       socket.off("gameStart");
       socket.off("gameUpdate");

@@ -551,7 +551,7 @@ io.on('connection', (socket) => {
     }
 
     callback({ code: roomCode, role: assignedRole, gameData });
-    io.to(roomCode).emit("gameStart", room);
+    io.to(roomCode).emit("gameStart", { ...room, wordGameState: undefined });
     // Start timer when we reach minimum 2 players
     const playerCount2 = Object.keys(room.players).length;
     if (playerCount2 >= 2) {
@@ -653,7 +653,7 @@ io.on('connection', (socket) => {
 
     console.log(`Bot ${botName} added to room ${roomCode}`);
 
-    io.to(roomCode).emit("gameStart", room);
+    io.to(roomCode).emit("gameStart", { ...room, wordGameState: undefined });
     // Start timer when we reach minimum 2 players
     if (Object.keys(room.players).length >= 2) {
       startTurnTimer(lobbyCode, roomCode);
@@ -920,6 +920,32 @@ io.on('connection', (socket) => {
     if (!lobbyCode) return callback({ chatHistory: [] });
     const room = lobbies[lobbyCode]?.rooms[roomCode];
     callback({ chatHistory: room?.chatHistory || [] });
+  });
+
+  // Request current game state (handles race when joining player misses gameStart/word game state)
+  socket.on("requestGameState", ({ roomCode }) => {
+    const lobbyCode = socketToLobby[socket.id];
+    if (!lobbyCode) return;
+    const room = lobbies[lobbyCode]?.rooms[roomCode];
+    if (!room) return;
+
+    // For word games, send filtered state through dedicated events
+    if (room.gameType === 'scribble' && room.wordGameState) {
+      socket.emit('scribbleStateUpdate', getSafeScribbleState(room.wordGameState, socket.id));
+    } else if (room.gameType === 'imposter' && room.wordGameState) {
+      socket.emit('imposterStateUpdate', getSafeImposterState(room.wordGameState, socket.id));
+    } else if (room.gameType === 'wordle' && room.wordGameState) {
+      const safeState = { ...room.wordGameState };
+      if (!safeState.result) safeState.word = undefined;
+      socket.emit('wordleStateUpdate', { state: safeState });
+    }
+
+    // Always send board game state too (handles missed gameStart)
+    if (Object.keys(room.players).length >= 2) {
+      const stateData = { ...room };
+      delete stateData.wordGameState;
+      socket.emit('gameUpdate', stateData);
+    }
   });
 
   // ── Scribble Events ──
