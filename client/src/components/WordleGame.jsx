@@ -13,8 +13,8 @@ const KEYBOARD_ROWS = [
 // Priority: correct > present > absent > unused
 const STATUS_PRIORITY = { correct: 3, present: 2, absent: 1 };
 
-const WordleGame = ({ roomCode, socket, playerName, playerId, isLocal, gameState: externalGameState }) => {
-  const [state, setState] = useState(null);
+const WordleGame = ({ roomCode, socket, playerName, playerId, isLocal, gameState: externalGameState, initialState }) => {
+  const [state, setState] = useState(initialState || null);
   const [currentGuess, setCurrentGuess] = useState('');
   const [shakeRow, setShakeRow] = useState(-1);
   const [flipRow, setFlipRow] = useState(-1);
