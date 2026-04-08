@@ -4,13 +4,13 @@ import './ScribbleGame.css';
 const COLORS = ['#ffffff', '#000000', '#ff0000', '#00cc00', '#0066ff', '#ffcc00', '#ff6600', '#cc00ff'];
 const SIZES = [3, 6, 12];
 
-const ScribbleGame = ({ roomCode, socket, playerName, playerId, players, isLocal }) => {
+const ScribbleGame = ({ roomCode, socket, playerName, playerId, players, isLocal, initialState }) => {
     const canvasRef = useRef(null);
     const [drawing, setDrawing] = useState(false);
     const [color, setColor] = useState('#000000');
     const [brushSize, setBrushSize] = useState(6);
     const [guess, setGuess] = useState('');
-    const [gameState, setGameState] = useState(null);
+    const [gameState, setGameState] = useState(initialState || null);
     const [guessMessages, setGuessMessages] = useState([]);
     const [lastPoint, setLastPoint] = useState(null);
     const messagesEndRef = useRef(null);
@@ -46,7 +46,7 @@ const ScribbleGame = ({ roomCode, socket, playerName, playerId, players, isLocal
         if (gameState && gameState.phase === 'drawing') {
             initCanvas();
         }
-    }, [gameState?.word, gameState?.currentDrawerIndex, gameState?.round, initCanvas]);
+    }, [gameState?.currentDrawerIndex, gameState?.round, initCanvas]);
 
     // Socket listeners
     useEffect(() => {
@@ -223,9 +223,12 @@ const ScribbleGame = ({ roomCode, socket, playerName, playerId, players, isLocal
 
     // Generate word display (underscores for guessers, full word for drawer)
     const getWordDisplay = () => {
-        if (!gameState || !gameState.word) return '';
-        if (isDrawer) return gameState.word;
-        return gameState.word.replace(/[a-zA-Z]/g, '_ ').trim();
+        if (!gameState) return '';
+        if (isDrawer && gameState.word) return gameState.word;
+        // Non-drawer: word is hidden server-side, use wordLength
+        const len = gameState.wordLength || gameState.word?.length || 0;
+        if (len === 0) return '';
+        return Array(len).fill('_').join(' ');
     };
 
     // Sort scores for display
