@@ -142,6 +142,55 @@ const checkWinner = (board) => {
   return null;
 };
 
+// Filter imposter state per-player: hide secrets except during reveal
+const getSafeImposterState = (state, playerId) => {
+  if (!state) return state;
+  const safe = { ...state };
+  safe.myWord = state.words?.[playerId] || '';
+  safe.isImposter = playerId === state.imposterPlayerId;
+  delete safe.words;
+  if (state.phase !== 'reveal') {
+    delete safe.imposterPlayerId;
+    delete safe.majorityWord;
+    delete safe.imposterWord;
+  }
+  return safe;
+};
+
+// Filter scribble state per-player: hide word from non-drawers
+const getSafeScribbleState = (state, playerId) => {
+  if (!state) return state;
+  const safe = { ...state };
+  const drawerId = state.drawOrder?.[state.currentDrawerIndex];
+  if (playerId !== drawerId) {
+    safe.wordLength = state.word?.length || 0;
+    delete safe.word;
+  }
+  return safe;
+};
+
+// Broadcast imposter state to all players (filtered per-player)
+const broadcastImposterState = (roomCode, room) => {
+  const playerIds = Object.keys(room.players);
+  for (const pid of playerIds) {
+    const playerSocket = io.sockets.sockets.get(pid);
+    if (playerSocket) {
+      playerSocket.emit('imposterStateUpdate', getSafeImposterState(room.wordGameState, pid));
+    }
+  }
+};
+
+// Broadcast scribble state to all players (filtered per-player)
+const broadcastScribbleState = (roomCode, room) => {
+  const playerIds = Object.keys(room.players);
+  for (const pid of playerIds) {
+    const playerSocket = io.sockets.sockets.get(pid);
+    if (playerSocket) {
+      playerSocket.emit('scribbleStateUpdate', getSafeScribbleState(room.wordGameState, pid));
+    }
+  }
+};
+
 const broadcastLobbyState = (lobbyCode) => {
   const lobby = lobbies[lobbyCode];
   if (!lobby) return;
@@ -340,13 +389,6 @@ io.on('connection', (socket) => {
 
   // Create a game room inside the lobby
   socket.on("createRoom", ({ gameType = "tictactoe", seriesLength = 0 } = {}, callback) => {
-    // If first arg is function, it means no options passed (old client)
-    if (typeof arguments[0] === 'function') {
-      callback = arguments[0];
-      gameType = "tictactoe";
-      seriesLength = 0;
-    }
-
     const lobbyCode = socketToLobby[socket.id];
     if (!lobbyCode) return callback({ error: "Not in a lobby" });
 
@@ -523,16 +565,10 @@ io.on('connection', (socket) => {
         }
         if (room.gameType === 'scribble') {
           room.wordGameState = getInitialScribbleState(playerIds, pNames);
-          io.to(roomCode).emit('scribbleStateUpdate', room.wordGameState);
+          broadcastScribbleState(roomCode, room);
         } else if (room.gameType === 'imposter') {
           room.wordGameState = getInitialImposterState(playerIds, pNames);
-          // Send each player their own view (with their personal word)
-          for (const pid of playerIds) {
-            const playerSocket = io.sockets.sockets.get(pid);
-            if (playerSocket) {
-              playerSocket.emit('imposterStateUpdate', room.wordGameState);
-            }
-          }
+          broadcastImposterState(roomCode, room);
         } else if (room.gameType === 'wordle') {
           room.wordGameState = getInitialWordleState();
           // Send state without the word to players
@@ -860,6 +896,7 @@ io.on('connection', (socket) => {
   // Chat
   socket.on("sendMessage", ({ room, message, sender }) => {
     const msg = {
+      room,
       message,
       sender,
       timestamp: new Date().toISOString(),
@@ -905,8 +942,8 @@ io.on('connection', (socket) => {
         message: `${playerName} guessed the word!`,
         correct: true,
       });
-      // Update state
-      io.to(roomCode).emit("scribbleStateUpdate", room.wordGameState);
+      // Update state (filtered per-player)
+      broadcastScribbleState(roomCode, room);
 
       // Check if all guessers have guessed
       const totalPlayers = room.wordGameState.drawOrder.length;
@@ -920,7 +957,7 @@ io.on('connection', (socket) => {
           room.wordGameState = null;
         } else {
           room.wordGameState = nextState;
-          io.to(roomCode).emit("scribbleStateUpdate", room.wordGameState);
+          broadcastScribbleState(roomCode, room);
         }
       }
     } else if (!result.alreadyGuessed) {
@@ -946,7 +983,7 @@ io.on('connection', (socket) => {
       pNames[pid] = lobbyPlayer?.name || 'Unknown';
     }
     room.wordGameState = getInitialScribbleState(playerIds, pNames);
-    io.to(roomCode).emit("scribbleStateUpdate", room.wordGameState);
+    broadcastScribbleState(roomCode, room);
   });
 
   socket.on("scribbleNextRound", ({ room: roomCode }) => {
@@ -963,7 +1000,7 @@ io.on('connection', (socket) => {
       room.wordGameState = null;
     } else {
       room.wordGameState = nextState;
-      io.to(roomCode).emit("scribbleStateUpdate", room.wordGameState);
+      broadcastScribbleState(roomCode, room);
     }
   });
 
@@ -982,13 +1019,7 @@ io.on('connection', (socket) => {
       pNames[pid] = lobbyPlayer?.name || 'Unknown';
     }
     room.wordGameState = getInitialImposterState(playerIds, pNames);
-    // Send state to each player
-    for (const pid of playerIds) {
-      const playerSocket = io.sockets.sockets.get(pid);
-      if (playerSocket) {
-        playerSocket.emit('imposterStateUpdate', room.wordGameState);
-      }
-    }
+    broadcastImposterState(roomCode, room);
   });
 
   socket.on("imposterClue", ({ room: roomCode, playerId, clue }) => {
@@ -1001,14 +1032,7 @@ io.on('connection', (socket) => {
     if (!newState) return;
 
     room.wordGameState = newState;
-    // Broadcast to all players
-    const playerIds = Object.keys(room.players);
-    for (const pid of playerIds) {
-      const playerSocket = io.sockets.sockets.get(pid);
-      if (playerSocket) {
-        playerSocket.emit('imposterStateUpdate', room.wordGameState);
-      }
-    }
+    broadcastImposterState(roomCode, room);
   });
 
   socket.on("imposterVote", ({ room: roomCode, playerId, votedForId }) => {
@@ -1033,14 +1057,7 @@ io.on('connection', (socket) => {
       }
     }
 
-    // Broadcast updated state
-    const playerIds = Object.keys(room.players);
-    for (const pid of playerIds) {
-      const playerSocket = io.sockets.sockets.get(pid);
-      if (playerSocket) {
-        playerSocket.emit('imposterStateUpdate', room.wordGameState);
-      }
-    }
+    broadcastImposterState(roomCode, room);
   });
 
   socket.on("imposterNextRound", ({ room: roomCode }) => {
@@ -1052,13 +1069,7 @@ io.on('connection', (socket) => {
     const playerIds = Object.keys(room.players);
     const newState = imposterNextRound(room.wordGameState, playerIds);
     room.wordGameState = newState;
-
-    for (const pid of playerIds) {
-      const playerSocket = io.sockets.sockets.get(pid);
-      if (playerSocket) {
-        playerSocket.emit('imposterStateUpdate', room.wordGameState);
-      }
-    }
+    broadcastImposterState(roomCode, room);
   });
 
   socket.on("imposterPhaseAdvance", ({ room: roomCode }) => {
@@ -1070,13 +1081,7 @@ io.on('connection', (socket) => {
     // Only advance from discussion to voting
     if (room.wordGameState.phase === 'discussion') {
       room.wordGameState.phase = 'voting';
-      const playerIds = Object.keys(room.players);
-      for (const pid of playerIds) {
-        const playerSocket = io.sockets.sockets.get(pid);
-        if (playerSocket) {
-          playerSocket.emit('imposterStateUpdate', room.wordGameState);
-        }
-      }
+      broadcastImposterState(roomCode, room);
     }
   });
 
@@ -1160,9 +1165,9 @@ io.on('connection', (socket) => {
             if (!safeState.result) safeState.word = undefined;
             socket.emit('wordleStateUpdate', { state: safeState });
           } else if (room.gameType === 'imposter' && room.wordGameState) {
-            socket.emit('imposterStateUpdate', room.wordGameState);
+            socket.emit('imposterStateUpdate', getSafeImposterState(room.wordGameState, socket.id));
           } else if (room.gameType === 'scribble' && room.wordGameState) {
-            socket.emit('scribbleStateUpdate', room.wordGameState);
+            socket.emit('scribbleStateUpdate', getSafeScribbleState(room.wordGameState, socket.id));
           } else {
             socket.emit("gameUpdate", room);
           }

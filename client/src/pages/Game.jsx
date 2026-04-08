@@ -78,8 +78,9 @@ function Game() {
   const [showInstructions, setShowInstructions] = useState(false);
   const [gameChatMessages, setGameChatMessages] = useState([]);
   const handleNewGameChat = useCallback((msg) => {
+    if (msg.room && msg.room !== roomCode) return;
     setGameChatMessages((prev) => [...prev, msg]);
-  }, []);
+  }, [roomCode]);
 
   // F4: Turn Timer
   const [timeLeft, setTimeLeft] = useState(null);
