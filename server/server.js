@@ -532,6 +532,24 @@ io.on('connection', (socket) => {
     socket.join(roomCode);
     console.log(`${playerName} joined room ${roomCode}`);
 
+    // Initialize word games BEFORE callback so joining player gets state immediately
+    const playerCount2 = Object.keys(room.players).length;
+    if (playerCount2 >= 2 && (room.gameType === 'scribble' || room.gameType === 'imposter' || room.gameType === 'wordle')) {
+      const playerIds = Object.keys(room.players);
+      const pNames = {};
+      for (const pid of playerIds) {
+        const lobbyPlayer = lobby.players.find(p => p.id === pid);
+        pNames[pid] = lobbyPlayer?.name || 'Unknown';
+      }
+      if (room.gameType === 'scribble') {
+        room.wordGameState = getInitialScribbleState(playerIds, pNames);
+      } else if (room.gameType === 'imposter') {
+        room.wordGameState = getInitialImposterState(playerIds, pNames);
+      } else if (room.gameType === 'wordle') {
+        room.wordGameState = getInitialWordleState();
+      }
+    }
+
     const gameData = {
       board: room.board, turn: room.turn, score: room.score,
       playerNames: room.playerNames, gameType: room.gameType,
@@ -549,35 +567,35 @@ io.on('connection', (socket) => {
     if (room.gameType === 'memory') {
       gameData.memoryState = room.memoryState;
     }
+    // Include filtered word game state for joining player
+    if (room.wordGameState) {
+      if (room.gameType === 'scribble') {
+        gameData.wordGameState = getSafeScribbleState(room.wordGameState, socket.id);
+        gameData.wordGameType = 'scribble';
+      } else if (room.gameType === 'imposter') {
+        gameData.wordGameState = getSafeImposterState(room.wordGameState, socket.id);
+        gameData.wordGameType = 'imposter';
+      } else if (room.gameType === 'wordle') {
+        gameData.wordGameState = { ...room.wordGameState, word: undefined };
+        gameData.wordGameType = 'wordle';
+      }
+    }
 
     callback({ code: roomCode, role: assignedRole, gameData });
     io.to(roomCode).emit("gameStart", { ...room, wordGameState: undefined });
-    // Start timer when we reach minimum 2 players
-    const playerCount2 = Object.keys(room.players).length;
-    if (playerCount2 >= 2) {
-      // Auto-start word games when enough players join
-      if (room.gameType === 'scribble' || room.gameType === 'imposter' || room.gameType === 'wordle') {
-        const playerIds = Object.keys(room.players);
-        const pNames = {};
-        for (const pid of playerIds) {
-          const lobbyPlayer = lobby.players.find(p => p.id === pid);
-          pNames[pid] = lobbyPlayer?.name || 'Unknown';
-        }
-        if (room.gameType === 'scribble') {
-          room.wordGameState = getInitialScribbleState(playerIds, pNames);
-          broadcastScribbleState(roomCode, room);
-        } else if (room.gameType === 'imposter') {
-          room.wordGameState = getInitialImposterState(playerIds, pNames);
-          broadcastImposterState(roomCode, room);
-        } else if (room.gameType === 'wordle') {
-          room.wordGameState = getInitialWordleState();
-          // Send state without the word to players
-          const safeState = { ...room.wordGameState, word: undefined };
-          io.to(roomCode).emit('wordleStateUpdate', { state: safeState });
-        }
-      } else {
-        startTurnTimer(lobbyCode, roomCode);
+
+    // Broadcast word game state to other players (joining player got it via callback)
+    if (playerCount2 >= 2 && room.wordGameState) {
+      if (room.gameType === 'scribble') {
+        broadcastScribbleState(roomCode, room);
+      } else if (room.gameType === 'imposter') {
+        broadcastImposterState(roomCode, room);
+      } else if (room.gameType === 'wordle') {
+        const safeState = { ...room.wordGameState, word: undefined };
+        io.to(roomCode).emit('wordleStateUpdate', { state: safeState });
       }
+    } else if (playerCount2 >= 2) {
+      startTurnTimer(lobbyCode, roomCode);
     }
     broadcastLobbyState(lobbyCode);
   });

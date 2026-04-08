@@ -4,13 +4,13 @@ import './ScribbleGame.css';
 const COLORS = ['#ffffff', '#000000', '#ff0000', '#00cc00', '#0066ff', '#ffcc00', '#ff6600', '#cc00ff'];
 const SIZES = [3, 6, 12];
 
-const ScribbleGame = ({ roomCode, socket, playerName, playerId, players, isLocal }) => {
+const ScribbleGame = ({ roomCode, socket, playerName, playerId, players, isLocal, initialState }) => {
     const canvasRef = useRef(null);
     const [drawing, setDrawing] = useState(false);
     const [color, setColor] = useState('#000000');
     const [brushSize, setBrushSize] = useState(6);
     const [guess, setGuess] = useState('');
-    const [gameState, setGameState] = useState(null);
+    const [gameState, setGameState] = useState(initialState || null);
     const [guessMessages, setGuessMessages] = useState([]);
     const [lastPoint, setLastPoint] = useState(null);
     const messagesEndRef = useRef(null);

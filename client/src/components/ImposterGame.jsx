@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './ImposterGame.css';
 
-const ImposterGame = ({ roomCode, socket, playerName, playerId, players, isLocal }) => {
-    const [gameState, setGameState] = useState(null);
+const ImposterGame = ({ roomCode, socket, playerName, playerId, players, isLocal, initialState }) => {
+    const [gameState, setGameState] = useState(initialState || null);
     const [clueInput, setClueInput] = useState('');
     const [revealData, setRevealData] = useState(null);
     const [chatMessages, setChatMessages] = useState([]);

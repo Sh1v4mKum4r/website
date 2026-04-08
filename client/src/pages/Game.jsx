@@ -76,6 +76,7 @@ function Game() {
   const [gameMessage, setGameMessage] = useState("Waiting for opponent...");
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
+  const [initialWordGameState, setInitialWordGameState] = useState(null);
   const [gameChatMessages, setGameChatMessages] = useState([]);
   const handleNewGameChat = useCallback((msg) => {
     if (msg.room && msg.room !== roomCode) return;
@@ -131,6 +132,10 @@ function Game() {
         setGameData(gameDataFromState);
         setGameStarted(true);
         if (gameDataFromState.chatHistory) setGameChatMessages(gameDataFromState.chatHistory);
+        // Pass word game state to word game components
+        if (gameDataFromState.wordGameState) {
+          setInitialWordGameState(gameDataFromState.wordGameState);
+        }
       }
     }
 
@@ -855,6 +860,7 @@ function Game() {
               playerId={socket.id}
               players={playerNames}
               isLocal={isLocal}
+              initialState={initialWordGameState}
             />
           )}
           {gameType === 'imposter' && (
@@ -865,6 +871,7 @@ function Game() {
               playerId={socket.id}
               players={playerNames}
               isLocal={isLocal}
+              initialState={initialWordGameState}
             />
           )}
           {gameType === 'wordle' && (
@@ -874,6 +881,7 @@ function Game() {
               playerName={myName || 'Player'}
               playerId={socket.id}
               isLocal={isLocal}
+              initialState={initialWordGameState}
             />
           )}
           <div className="controls">
