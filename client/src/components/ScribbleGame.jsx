@@ -46,7 +46,7 @@ const ScribbleGame = ({ roomCode, socket, playerName, playerId, players, isLocal
         if (gameState && gameState.phase === 'drawing') {
             initCanvas();
         }
-    }, [gameState?.word, gameState?.currentDrawerIndex, gameState?.round, initCanvas]);
+    }, [gameState?.currentDrawerIndex, gameState?.round, initCanvas]);
 
     // Socket listeners
     useEffect(() => {
@@ -223,9 +223,12 @@ const ScribbleGame = ({ roomCode, socket, playerName, playerId, players, isLocal
 
     // Generate word display (underscores for guessers, full word for drawer)
     const getWordDisplay = () => {
-        if (!gameState || !gameState.word) return '';
-        if (isDrawer) return gameState.word;
-        return gameState.word.replace(/[a-zA-Z]/g, '_ ').trim();
+        if (!gameState) return '';
+        if (isDrawer && gameState.word) return gameState.word;
+        // Non-drawer: word is hidden server-side, use wordLength
+        const len = gameState.wordLength || gameState.word?.length || 0;
+        if (len === 0) return '';
+        return Array(len).fill('_').join(' ');
     };
 
     // Sort scores for display

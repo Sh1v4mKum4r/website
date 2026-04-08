@@ -86,7 +86,8 @@ const ImposterGame = ({ roomCode, socket, playerName, playerId, players, isLocal
 
     const {
         phase,
-        words,
+        myWord,
+        isImposter,
         clues,
         clueOrder,
         currentClueIndex,
@@ -96,11 +97,7 @@ const ImposterGame = ({ roomCode, socket, playerName, playerId, players, isLocal
         totalRounds,
         playerNames,
         playerIds,
-        imposterPlayerId,
     } = gameState;
-
-    const myWord = words?.[playerId];
-    const isImposter = playerId === imposterPlayerId;
     const currentCluePlayer = clueOrder?.[currentClueIndex];
     const isMyTurnToClue = currentCluePlayer === playerId && phase === 'clue';
     const hasVoted = !!votes?.[playerId];

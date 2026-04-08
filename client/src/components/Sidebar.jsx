@@ -24,6 +24,7 @@ function Sidebar({ isOpen, onClose }) {
   const { setLobbyCode: setContextLobbyCode, setPlayerName: setContextPlayerName } = useLobby();
 
   const handleNewMessage = useCallback((msg) => {
+    if (msg.room && !msg.room.startsWith('lobby:')) return;
     setChatMessages((prev) => [...prev, msg]);
   }, []);
 
