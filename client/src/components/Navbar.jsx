@@ -17,6 +17,7 @@ function Navbar({ onLobbyClick }) {
     <nav className="navbar">
       <Link to="/" className="nav-brand">🎮 MultiplayerGames.in</Link>
       <div className="nav-links">
+        <Link to="/leaderboard" className="nav-button" title="Leaderboard">🏆</Link>
         <button className="nav-button" onClick={toggleTheme} title={theme === 'dark' ? 'Light mode' : 'Dark mode'}>
           {theme === 'dark' ? '☀️' : '🌙'}
         </button>
