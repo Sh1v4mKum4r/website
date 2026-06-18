@@ -11,11 +11,15 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "better-sqlite3": "^12.11.1",
     "cors": "^2.8.5",
     "express": "^4.19.2",
     "socket.io": "^4.7.5"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "allowScripts": {
+    "better-sqlite3@12.11.1": true
   }
 }

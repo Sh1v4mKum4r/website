@@ -15,9 +15,18 @@ const { getBotMove } = require('./utils/botLogic');
 const { getInitialScribbleState, checkGuess: scribbleCheckGuess, nextRound: scribbleNextRound } = require('./utils/scribbleLogic');
 const { getInitialImposterState, submitClue, submitVote, revealResults, nextRound: imposterNextRound } = require('./utils/imposterLogic');
 const { getInitialWordleState, submitGuess: wordleSubmitGuess } = require('./utils/wordleLogic');
+const { recordWin, getLeaderboard, getAllLeaderboards } = require('./db');
 
 const app = express();
 app.use(cors());
+
+// ── Leaderboard REST API ──
+app.get('/api/leaderboard', (req, res) => {
+  res.json(getAllLeaderboards());
+});
+app.get('/api/leaderboard/:game', (req, res) => {
+  res.json(getLeaderboard(req.params.game));
+});
 
 const GAME_CONFIG = {
     tictactoe: { maxPlayers: 2 },
@@ -79,7 +88,7 @@ const startTurnTimer = (lobbyCode, roomCode) => {
       } else {
         winningRole = room.turn === 'X' ? 'O' : 'X';
       }
-      handleGameResult(room, { winner: winningRole, line: null, timeout: true }, roomCode);
+      handleGameResult(room, { winner: winningRole, line: null, timeout: true }, roomCode, lobbies[lobbyCode]);
       io.to(roomCode).emit('gameUpdate', room);
     }
   }, 1000);
@@ -92,10 +101,30 @@ const clearTurnTimer = (roomCode) => {
   }
 };
 
-const handleGameResult = (room, result, roomCode) => {
+// Record the winning role's human player in the leaderboard.
+// Skips bots and any role we can't resolve to a real lobby player name.
+const recordLeaderboardWin = (room, winnerRole, lobby) => {
+  if (!lobby || !room.gameType) return;
+  // Find the socketId in this room that holds the winning role.
+  const winnerSocketId = Object.keys(room.players || {}).find(
+    (sid) => room.players[sid] === winnerRole
+  );
+  if (!winnerSocketId) return;
+  if (room.bots && room.bots[winnerSocketId]) return; // bot win — don't record
+  const name = lobby.players.find((p) => p.id === winnerSocketId)?.name;
+  if (!name) return; // disconnected/unknown — skip
+  try {
+    recordWin(name, room.gameType);
+  } catch (err) {
+    console.error('Leaderboard recordWin failed:', err.message);
+  }
+};
+
+const handleGameResult = (room, result, roomCode, lobby) => {
   room.result = result;
   if (result.winner !== 'draw') {
     room.score[result.winner]++;
+    recordLeaderboardWin(room, result.winner, lobby);
     if (room.seriesLength > 0) {
       const winsNeeded = Math.ceil(room.seriesLength / 2);
       if (room.score[result.winner] >= winsNeeded) {
@@ -272,7 +301,7 @@ const executeMove = (lobbyCode, roomCode, index, player, data) => {
   const result = moveResult.result;
 
   if (result) {
-    handleGameResult(room, result, roomCode);
+    handleGameResult(room, result, roomCode, lobbies[lobbyCode]);
     clearTurnTimer(roomCode);
     io.to(roomCode).emit("gameUpdate", room);
     return true;
