@@ -48,10 +48,10 @@ ephemeral, so this resets on redeploy — acceptable for now; swap `db.js` inter
 Postgres later for permanence.
 
 ### 3. Hook — `handleGameResult(room, result, roomCode, lobby)`
-On a non-draw result: find the socketId in `room.players` whose role === `result.winner`; skip if
-it is a bot (`room.bots[socketId]`); otherwise resolve the human name from `lobby.players` and call
-`recordWin(name, room.gameType)`. The two call sites both have `lobbyCode` in scope, so they pass
-`lobbies[lobbyCode]`.
+On a non-draw result: skip entirely if the room contains any bot (`room.bots`) — this prevents
+farming wins against bots; otherwise find the socketId in `room.players` whose role ===
+`result.winner`, resolve the human name from `lobby.players`, and call `recordWin(name,
+room.gameType)`. The two call sites both have `lobbyCode` in scope, so they pass `lobbies[lobbyCode]`.
 
 ### 4. REST endpoints — existing Express app
 - `GET /api/leaderboard`        → all games (`getAllLeaderboards`)
