@@ -102,15 +102,16 @@ const clearTurnTimer = (roomCode) => {
 };
 
 // Record the winning role's human player in the leaderboard.
-// Skips bots and any role we can't resolve to a real lobby player name.
+// Skips bot games entirely and any role we can't resolve to a real player name.
 const recordLeaderboardWin = (room, winnerRole, lobby) => {
   if (!lobby || !room.gameType) return;
+  // Any room containing a bot doesn't count (prevents farming wins vs bots).
+  if (room.bots && Object.keys(room.bots).length > 0) return;
   // Find the socketId in this room that holds the winning role.
   const winnerSocketId = Object.keys(room.players || {}).find(
     (sid) => room.players[sid] === winnerRole
   );
   if (!winnerSocketId) return;
-  if (room.bots && room.bots[winnerSocketId]) return; // bot win — don't record
   const name = lobby.players.find((p) => p.id === winnerSocketId)?.name;
   if (!name) return; // disconnected/unknown — skip
   try {
@@ -1385,6 +1386,12 @@ const handleDisconnect = (socket) => {
   }
 };
 
-server.listen(3001, () => {
-  console.log("SERVER IS RUNNING ON PORT 3001");
-});
+// Only listen when run directly (not when imported by tests).
+if (require.main === module) {
+  server.listen(3001, () => {
+    console.log("SERVER IS RUNNING ON PORT 3001");
+  });
+}
+
+// Exported for tests.
+module.exports = { recordLeaderboardWin, handleGameResult, server };

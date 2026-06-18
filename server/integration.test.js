@@ -13,7 +13,7 @@ const TMP_DB = path.join(os.tmpdir(), `lb-itest-${process.pid}.db`);
 process.env.LEADERBOARD_DB = TMP_DB;
 
 const io = require(path.join(__dirname, '../client/node_modules/socket.io-client'));
-require('./server'); // starts listening on :3001
+const { server } = require('./server');
 
 const URL = 'http://localhost:3001';
 const opts = { transports: ['websocket'], forceNew: true };
@@ -27,6 +27,8 @@ const waitFor = (sock, event) =>
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function run() {
+  await new Promise((resolve) => server.listen(3001, resolve));
+
   const a = io(URL, opts); // Alice (X, creator)
   const b = io(URL, opts); // Bob   (O, joiner)
   await Promise.all([waitFor(a, 'connect'), waitFor(b, 'connect')]);

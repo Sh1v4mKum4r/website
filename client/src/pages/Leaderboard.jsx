@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { API_URL } from '../config';
 import './Leaderboard.css';
-
-// Same convention as socket.js: localhost override, otherwise production API.
-const API_URL = import.meta.env.VITE_API_URL || 'https://multiplayergames-api.onrender.com';
 
 // Game id -> display name (mirrors the GAMES list in Games.jsx).
 const GAME_NAMES = {
