@@ -16,7 +16,7 @@ export const SKY_GAMES = [
   { id: 'dotsboxes', name: 'Dots & Boxes', route: 'dots-and-boxes', cluster: 'strategy', glyph: '▦' },
   { id: 'nim', name: 'Nim', route: 'nim', cluster: 'strategy', glyph: '≡' },
   { id: 'uttt', name: 'Ultimate TTT', route: 'ultimate-tic-tac-toe', cluster: 'strategy', glyph: '⊞' },
-  { id: 'chain', name: 'Chain Reaction', route: 'chain-reaction', cluster: 'party', glyph: '✺' },
+  { id: 'chain', name: 'Chain Reaction', route: 'chain-reaction', cluster: 'party', glyph: '⚛' },
   { id: 'memory', name: 'Memory', route: 'memory', cluster: 'party', glyph: '⧉' },
   { id: 'scribble', name: 'Scribble', route: 'scribble', cluster: 'party', glyph: '✎' },
   { id: 'imposter', name: 'Imposter', route: 'imposter-word', cluster: 'party', glyph: '☲' },

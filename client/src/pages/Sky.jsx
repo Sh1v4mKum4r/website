@@ -51,6 +51,7 @@ export default function Sky() {
         <div className="sky-surface">
           <SkyCanvas stars={stars} effects={[]} width={size.width} height={size.height} onSelect={setSelected} />
           <SkyOverlay star={selected} onPlay={play} onClose={() => setSelected(null)} />
+          <div className="sr-only"><FallbackList stars={stars} onPlay={play} /></div>
         </div>
       )}
 

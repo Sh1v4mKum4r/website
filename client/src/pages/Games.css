@@ -201,3 +201,5 @@
         gap: 8px;
     }
 }
+.sky-beta-link { display: inline-block; margin: 12px auto; padding: 8px 16px; border-radius: 999px; font-size: 0.9rem; font-weight: 600; text-decoration: none; color: #fff; background: linear-gradient(90deg, #7c3aed, #4f46e5); }
+.sky-beta-link:hover { filter: brightness(1.1); }
