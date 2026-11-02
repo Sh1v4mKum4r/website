@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "concurrently \"npm start\" \"npm run dev --prefix ../client\"",
-    "test": "node db.test.js && node winrules.test.js && node integration.test.js"
+    "test": "node db.test.js && node winrules.test.js && node integration.test.js && node skyPresence.test.js"
   },
   "keywords": [],
   "author": "",
