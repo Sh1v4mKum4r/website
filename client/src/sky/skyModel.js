@@ -89,3 +89,19 @@ export function generateStarfield(seed, count, width, height) {
   }
   return out;
 }
+
+export function makeCamera() { return { x: 0, y: 0, scale: 1 }; }
+
+export function worldToScreen(cam, wx, wy) {
+  return { x: wx * cam.scale + cam.x, y: wy * cam.scale + cam.y };
+}
+export function screenToWorld(cam, sx, sy) {
+  return { x: (sx - cam.x) / cam.scale, y: (sy - cam.y) / cam.scale };
+}
+export function clampCamera(cam, { width, height }) {
+  const scale = Math.min(3, Math.max(1, cam.scale));
+  const maxPan = { x: width * (scale - 1), y: height * (scale - 1) };
+  const x = Math.min(0, Math.max(-maxPan.x, cam.x));
+  const y = Math.min(0, Math.max(-maxPan.y, cam.y));
+  return { x, y, scale };
+}
