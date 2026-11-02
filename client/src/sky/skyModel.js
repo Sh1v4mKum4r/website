@@ -64,3 +64,28 @@ export function hitTest(stars, x, y) {
   }
   return best;
 }
+
+let _effectId = 0;
+export function makeEffect(type, payload = {}, ttl = 2000) {
+  return { id: `e${++_effectId}`, type, payload, t: 0, ttl };
+}
+
+export function ageEffects(effects, dt) {
+  return effects
+    .map((e) => ({ ...e, t: e.t + dt }))
+    .filter((e) => e.t < e.ttl);
+}
+
+export function generateStarfield(seed, count, width, height) {
+  const rand = mulberry32(seed);
+  const out = [];
+  for (let i = 0; i < count; i++) {
+    out.push({
+      x: rand() * width,
+      y: rand() * height,
+      r: 0.5 + rand() * 1.2,
+      phase: rand() * Math.PI * 2,
+    });
+  }
+  return out;
+}
