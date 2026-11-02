@@ -5,6 +5,7 @@ import Sky from './Sky';
 
 beforeAll(() => {
   HTMLCanvasElement.prototype.getContext = () => ({
+    moveTo() {}, lineTo() {}, stroke() {}, set strokeStyle(_) {}, set lineWidth(_) {},
     clearRect() {}, beginPath() {}, arc() {}, fill() {}, save() {}, restore() {}, fillRect() {},
     createRadialGradient() { return { addColorStop() {} }; }, fillText() {}, translate() {}, scale() {},
     set fillStyle(_) {}, set globalAlpha(_) {}, set font(_) {}, set textAlign(_) {}, set shadowBlur(_) {}, set shadowColor(_) {},

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { socket as defaultSocket } from '../socket';
 import { SKY_GAMES } from './games';
-import { layoutStars, applyCounts, makeEffect } from './skyModel';
+import { layoutStars, applyCounts, makeEffect, ageEffects } from './skyModel';
 
 // `socket` is injectable for tests; defaults to the shared app socket.
 export function useSkyData({ width, height, seed = 42, socket = defaultSocket }) {
@@ -30,6 +30,13 @@ export function useSkyData({ width, height, seed = 42, socket = defaultSocket })
       socket.off('sky:event', onEvent);
     };
   }, [socket]);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setEffects((prev) => (prev.length ? ageEffects(prev, 100) : prev));
+    }, 100);
+    return () => clearInterval(id);
+  }, []);
 
   const stars = useMemo(() => applyCounts(base, counts), [base, counts]);
   return { stars, effects, setEffects, totalPlayers };

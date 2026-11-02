@@ -29,7 +29,7 @@ export default function Sky() {
     return () => window.removeEventListener('resize', measure);
   }, []);
 
-  const { stars, totalPlayers } = useSkyData({ width: size.width, height: size.height });
+  const { stars, totalPlayers, effects } = useSkyData({ width: size.width, height: size.height });
 
   const play = (star) => {
     if (reduced) { navigate(`/game/${star.route}/local`, { state: { gameType: star.id, isLocal: true } }); return; }
@@ -49,7 +49,7 @@ export default function Sky() {
         <FallbackList stars={stars} onPlay={play} />
       ) : (
         <div className="sky-surface">
-          <SkyCanvas stars={stars} effects={[]} width={size.width} height={size.height} onSelect={setSelected} />
+          <SkyCanvas stars={stars} effects={effects} width={size.width} height={size.height} onSelect={setSelected} />
           <SkyOverlay star={selected} onPlay={play} onClose={() => setSelected(null)} />
           <div className="sr-only"><FallbackList stars={stars} onPlay={play} /></div>
         </div>
