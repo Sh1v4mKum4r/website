@@ -24,21 +24,32 @@ function mulberry32(seed) {
   };
 }
 
-const CLUSTER_ORDER = ['strategy', 'word', 'party'];
+// Each cluster is laid out as an evenly-spaced ring around its anchor, so stars
+// never clump and the connecting lines form a clean shape. Deterministic.
+const CLUSTER_ANCHORS = {
+  strategy: { x: 0.30, y: 0.52 },
+  word: { x: 0.52, y: 0.72 },
+  party: { x: 0.72, y: 0.33 },
+};
 
-export function layoutStars(games, { width, height, seed = 1 }) {
-  const rand = mulberry32(seed);
-  const bands = CLUSTER_ORDER.length;
-  const margin = 0.12;
-  return games.map((g) => {
-    const band = Math.max(0, CLUSTER_ORDER.indexOf(g.cluster));
-    const bandW = width / bands;
-    const cx = bandW * (band + 0.5);
-    const jitterX = (rand() - 0.5) * bandW * (1 - margin);
-    const y = height * (margin + rand() * (1 - margin * 2));
-    const x = Math.min(width, Math.max(0, cx + jitterX));
-    return { id: g.id, name: g.name, route: g.route, cluster: g.cluster, glyph: g.glyph, x, y };
-  });
+export function layoutStars(games, { width, height }) {
+  const byCluster = {};
+  for (const g of games) (byCluster[g.cluster] = byCluster[g.cluster] || []).push(g);
+  const stars = [];
+  for (const [cluster, list] of Object.entries(byCluster)) {
+    const anchor = CLUSTER_ANCHORS[cluster] || { x: 0.5, y: 0.5 };
+    const ax = anchor.x * width;
+    const ay = anchor.y * height;
+    const n = list.length;
+    const R = n <= 1 ? 0 : Math.min(Math.min(width, height) * 0.34, 70 + n * 14);
+    list.forEach((g, i) => {
+      const ang = -Math.PI / 2 + (i / n) * Math.PI * 2;
+      const x = Math.min(width, Math.max(0, ax + Math.cos(ang) * R));
+      const y = Math.min(height, Math.max(0, ay + Math.sin(ang) * R));
+      stars.push({ id: g.id, name: g.name, route: g.route, cluster: g.cluster, glyph: g.glyph, ring: i, x, y });
+    });
+  }
+  return stars;
 }
 
 export function applyCounts(stars, countsById) {

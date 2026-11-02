@@ -51,15 +51,20 @@ export default function SkyCanvas({ stars, effects, width, height, onSelect }) {
         ctx.fillStyle = hexA(col, 0.5);
         ctx.font = '10px system-ui';
         ctx.textAlign = 'center';
-        ctx.fillText(((CLUSTERS[cluster] && CLUSTERS[cluster].label) || '').toUpperCase(), c.x, c.y - 150);
+        const rad = Math.max(40, ...stars.filter((s) => s.cluster === cluster).map((s) => Math.hypot(s.x - c.x, s.y - c.y)));
+        ctx.fillText(((CLUSTERS[cluster] && CLUSTERS[cluster].label) || '').toUpperCase(), c.x, c.y - rad - 20);
       }
-      // constellation lines within each cluster
-      ctx.strokeStyle = 'rgba(160,180,255,0.18)';
-      ctx.lineWidth = 1;
+      // constellation lines: connect ring neighbours into a clean closed shape
+      ctx.strokeStyle = 'rgba(160,180,255,0.22)';
+      ctx.lineWidth = 1.2;
       for (const cluster of Object.keys(centroids)) {
-        const members = stars.filter((s) => s.cluster === cluster);
+        const members = stars
+          .filter((s) => s.cluster === cluster)
+          .sort((a, b) => (a.ring || 0) - (b.ring || 0));
+        if (members.length < 2) continue;
         ctx.beginPath();
         members.forEach((s, i) => (i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y)));
+        ctx.closePath();
         ctx.stroke();
       }
 
@@ -75,10 +80,13 @@ export default function SkyCanvas({ stars, effects, width, height, onSelect }) {
         ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
         ctx.fill();
         ctx.shadowBlur = 0;
-        ctx.fillStyle = '#06101f';
-        ctx.font = `${Math.round(star.radius)}px system-ui`;
+        // legible game-name label below the star
+        ctx.font = '600 12px Outfit, system-ui';
         ctx.textAlign = 'center';
-        ctx.fillText(star.glyph, star.x, star.y + star.radius * 0.35);
+        ctx.fillStyle = 'rgba(0,0,0,0.65)';
+        ctx.fillText(star.name, star.x + 0.5, star.y + star.radius + 15.5);
+        ctx.fillStyle = '#eaf0ff';
+        ctx.fillText(star.name, star.x, star.y + star.radius + 15);
       }
 
       const activeEffects = stateRef.current.effects || [];
