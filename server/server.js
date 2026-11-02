@@ -16,6 +16,7 @@ const { getInitialScribbleState, checkGuess: scribbleCheckGuess, nextRound: scri
 const { getInitialImposterState, submitClue, submitVote, revealResults, nextRound: imposterNextRound } = require('./utils/imposterLogic');
 const { getInitialWordleState, submitGuess: wordleSubmitGuess } = require('./utils/wordleLogic');
 const { recordWin, getLeaderboard, getAllLeaderboards } = require('./db');
+const { computeSkyState, buildWinEvent } = require('./utils/skyPresence');
 
 const app = express();
 app.use(cors());
@@ -53,6 +54,13 @@ const io = new Server(server, {
     methods: ["GET", "POST"]
   }
 });
+
+// ── Sky presence broadcast ──
+const SKY_STATE_INTERVAL_MS = 4000;
+function broadcastSkyState() {
+  io.emit('sky:state', computeSkyState(lobbies));
+}
+setInterval(broadcastSkyState, SKY_STATE_INTERVAL_MS).unref?.();
 
 // lobbies: { lobbyCode: { players: [{id, name}], rooms: { roomCode: { players: {socketId: role}, playerNames: [], board, turn, score } } } }
 const lobbies = {};
@@ -126,6 +134,8 @@ const handleGameResult = (room, result, roomCode, lobby) => {
   if (result.winner !== 'draw') {
     room.score[result.winner]++;
     recordLeaderboardWin(room, result.winner, lobby);
+    const skyEvent = buildWinEvent(room);
+    if (skyEvent) io.emit('sky:event', skyEvent);
     if (room.seriesLength > 0) {
       const winsNeeded = Math.ceil(room.seriesLength / 2);
       if (room.score[result.winner] >= winsNeeded) {
@@ -375,6 +385,7 @@ const scheduleBotMove = (lobbyCode, roomCode) => {
 
 io.on('connection', (socket) => {
   console.log(`User Connected: ${socket.id}`);
+  socket.emit('sky:state', computeSkyState(lobbies));
 
   // Create a new lobby
   socket.on("createLobby", ({ name }, callback) => {
