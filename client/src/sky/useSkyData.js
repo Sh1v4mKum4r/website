@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { socket as defaultSocket } from '../socket';
 import { SKY_GAMES } from './games';
-import { layoutStars, applyCounts, makeEffect, ageEffects } from './skyModel';
+import { layoutStars, applyCounts, makeEffect } from './skyModel';
 
 // `socket` is injectable for tests; defaults to the shared app socket.
 export function useSkyData({ width, height, seed = 42, socket = defaultSocket }) {
@@ -21,7 +21,9 @@ export function useSkyData({ width, height, seed = 42, socket = defaultSocket })
       setTotalPlayers(state.totalPlayers || 0);
     };
     const onEvent = (ev) => {
-      setEffects((prev) => [...prev, makeEffect(ev.type, ev, 2200)].slice(-20));
+      const eff = makeEffect(ev.type, ev, 2200);
+      eff.born = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      setEffects((prev) => [...prev, eff].slice(-20));
     };
     socket.on('sky:state', onState);
     socket.on('sky:event', onEvent);
@@ -33,8 +35,12 @@ export function useSkyData({ width, height, seed = 42, socket = defaultSocket })
 
   useEffect(() => {
     const id = setInterval(() => {
-      setEffects((prev) => (prev.length ? ageEffects(prev, 100) : prev));
-    }, 100);
+      const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      setEffects((prev) => {
+        const next = prev.filter((e) => !e.born || now - e.born < e.ttl);
+        return next.length === prev.length ? prev : next;
+      });
+    }, 500);
     return () => clearInterval(id);
   }, []);
 

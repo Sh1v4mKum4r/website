@@ -12,6 +12,7 @@ export default function SkyCanvas({ stars, effects, width, height, onSelect }) {
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
+    camRef.current = clampCamera(camRef.current, { width, height });
     const dpr = window.devicePixelRatio || 1;
     canvas.width = width * dpr;
     canvas.height = height * dpr;
@@ -46,7 +47,7 @@ export default function SkyCanvas({ stars, effects, width, height, onSelect }) {
         grad.addColorStop(0, hexA(col, 0.18));
         grad.addColorStop(1, hexA(col, 0));
         ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, width, height);
+        ctx.fillRect(c.x - 180, c.y - 180, 360, 360);
         ctx.fillStyle = hexA(col, 0.5);
         ctx.font = '10px system-ui';
         ctx.textAlign = 'center';
@@ -80,19 +81,23 @@ export default function SkyCanvas({ stars, effects, width, height, onSelect }) {
         ctx.fillText(star.glyph, star.x, star.y + star.radius * 0.35);
       }
 
-      const byId = Object.fromEntries(stars.map((s) => [s.id, s]));
-      for (const e of stateRef.current.effects || []) {
-        const p = effectProgress(e);
-        if (e.type === 'win') {
-          const s = byId[e.payload.game]; if (!s) continue;
-          ctx.strokeStyle = `rgba(253,230,138,${1 - p})`;
-          ctx.lineWidth = 2;
-          ctx.beginPath(); ctx.arc(s.x, s.y, 6 + p * 90, 0, Math.PI * 2); ctx.stroke();
-        } else if (e.type === 'move') {
-          const a = byId[e.payload.from]; const b = byId[e.payload.to]; if (!a || !b) continue;
-          const pos = cometPos(a, b, p);
-          ctx.fillStyle = `rgba(255,255,255,${1 - p})`;
-          ctx.beginPath(); ctx.arc(pos.x, pos.y, 3, 0, Math.PI * 2); ctx.fill();
+      const activeEffects = stateRef.current.effects || [];
+      if (activeEffects.length) {
+        const byId = Object.fromEntries(stars.map((s) => [s.id, s]));
+        const nowMs = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+        for (const e of activeEffects) {
+          const p = e.born ? Math.min(1, Math.max(0, (nowMs - e.born) / (e.ttl || 2200))) : effectProgress(e);
+          if (e.type === 'win') {
+            const s = byId[e.payload.game]; if (!s) continue;
+            ctx.strokeStyle = `rgba(253,230,138,${1 - p})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(s.x, s.y, 6 + p * 90, 0, Math.PI * 2); ctx.stroke();
+          } else if (e.type === 'move') {
+            const a = byId[e.payload.from]; const b = byId[e.payload.to]; if (!a || !b) continue;
+            const pos = cometPos(a, b, p);
+            ctx.fillStyle = `rgba(255,255,255,${1 - p})`;
+            ctx.beginPath(); ctx.arc(pos.x, pos.y, 3, 0, Math.PI * 2); ctx.fill();
+          }
         }
       }
       ctx.restore();
@@ -104,6 +109,23 @@ export default function SkyCanvas({ stars, effects, width, height, onSelect }) {
 
   const dragRef = useRef(null);
 
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const handler = (e) => {
+      e.preventDefault();
+      const cam = camRef.current;
+      const rect = canvas.getBoundingClientRect();
+      const sx = e.clientX - rect.left;
+      const sy = e.clientY - rect.top;
+      const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+      const nx = sx - (sx - cam.x) * factor;
+      const ny = sy - (sy - cam.y) * factor;
+      camRef.current = clampCamera({ x: nx, y: ny, scale: cam.scale * factor }, { width, height });
+    };
+    canvas.addEventListener('wheel', handler, { passive: false });
+    return () => canvas.removeEventListener('wheel', handler);
+  }, [width, height]);
+
   const handleClick = (e) => {
     if (dragRef.current && dragRef.current.moved) return; // a drag, not a click
     const rect = e.currentTarget.getBoundingClientRect();
@@ -114,12 +136,6 @@ export default function SkyCanvas({ stars, effects, width, height, onSelect }) {
     if (hit) onSelect(hit);
   };
 
-  const onWheel = (e) => {
-    e.preventDefault();
-    const cam = camRef.current;
-    const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
-    camRef.current = clampCamera({ ...cam, scale: cam.scale * factor }, { width, height });
-  };
   const onPointerDown = (e) => { dragRef.current = { x: e.clientX, y: e.clientY, cam: { ...camRef.current }, moved: false }; };
   const onPointerMove = (e) => {
     const d = dragRef.current;
@@ -136,7 +152,6 @@ export default function SkyCanvas({ stars, effects, width, height, onSelect }) {
       className="sky-canvas"
       style={{ width, height }}
       onClick={handleClick}
-      onWheel={onWheel}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
