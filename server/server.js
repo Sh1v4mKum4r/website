@@ -16,7 +16,7 @@ const { getInitialScribbleState, checkGuess: scribbleCheckGuess, nextRound: scri
 const { getInitialImposterState, submitClue, submitVote, revealResults, nextRound: imposterNextRound } = require('./utils/imposterLogic');
 const { getInitialWordleState, submitGuess: wordleSubmitGuess } = require('./utils/wordleLogic');
 const { recordWin, getLeaderboard, getAllLeaderboards } = require('./db');
-const { computeSkyState, buildWinEvent } = require('./utils/skyPresence');
+const { computeSkyState, buildWinEvent, snapshotLocations, diffPresence } = require('./utils/skyPresence');
 
 const app = express();
 app.use(cors());
@@ -57,7 +57,11 @@ const io = new Server(server, {
 
 // ── Sky presence broadcast ──
 const SKY_STATE_INTERVAL_MS = 4000;
+let lastLocations = {};
 function broadcastSkyState() {
+  const next = snapshotLocations(lobbies);
+  for (const ev of diffPresence(lastLocations, next)) io.emit('sky:event', ev);
+  lastLocations = next;
   io.emit('sky:state', computeSkyState(lobbies));
 }
 setInterval(broadcastSkyState, SKY_STATE_INTERVAL_MS).unref?.();

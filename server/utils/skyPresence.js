@@ -35,4 +35,29 @@ function buildWinEvent(room) {
   return { type: 'win', game: room.gameType };
 }
 
-module.exports = { computeSkyState, buildWinEvent };
+// Map each HUMAN socket id to the game it is currently in.
+function snapshotLocations(lobbies) {
+  const locs = {};
+  for (const lobby of Object.values(lobbies || {})) {
+    for (const room of Object.values(lobby.rooms || {})) {
+      if (!room.gameType) continue;
+      for (const id of Object.keys(room.players || {})) {
+        if (!id.startsWith('bot-')) locs[id] = room.gameType;
+      }
+    }
+  }
+  return locs;
+}
+
+// Compare two location snapshots; emit a move event only when a player
+// goes from one game directly to another (joins/leaves are ignored).
+function diffPresence(prev, next) {
+  const events = [];
+  for (const [id, to] of Object.entries(next)) {
+    const from = prev[id];
+    if (from && from !== to) events.push({ type: 'move', from, to });
+  }
+  return events;
+}
+
+module.exports = { computeSkyState, buildWinEvent, snapshotLocations, diffPresence };

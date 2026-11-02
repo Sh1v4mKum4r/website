@@ -68,4 +68,26 @@ check('buildWinEvent returns null for null room', () => {
   assert.strictEqual(buildWinEvent(null), null);
 });
 
+const { snapshotLocations, diffPresence } = require('./utils/skyPresence');
+
+check('snapshotLocations maps each human socket to its game', () => {
+  const locs = snapshotLocations({ L1: { rooms: { R1: { gameType: 'chess', players: { a: 'X', 'bot-1': 'O' } } } } });
+  assert.deepStrictEqual(locs, { a: 'chess' });
+});
+
+check('diffPresence emits a move when a player changes game', () => {
+  const prev = { a: 'chess' };
+  const next = { a: 'wordle' };
+  assert.deepStrictEqual(diffPresence(prev, next), [{ type: 'move', from: 'chess', to: 'wordle' }]);
+});
+
+check('diffPresence emits nothing when nobody moved', () => {
+  assert.deepStrictEqual(diffPresence({ a: 'chess' }, { a: 'chess' }), []);
+});
+
+check('diffPresence ignores joins and leaves (only game-to-game moves)', () => {
+  assert.deepStrictEqual(diffPresence({}, { a: 'chess' }), []);
+  assert.deepStrictEqual(diffPresence({ a: 'chess' }, {}), []);
+});
+
 console.log(`\n${passed} passed`);
