@@ -1,0 +1,7 @@
+.warp { position: fixed; inset: 0; z-index: 50; background: #05060f; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.warp-streaks { position: absolute; inset: 0;
+  background: radial-gradient(circle at 50% 50%, transparent 0, #05060f 70%),
+    repeating-conic-gradient(from 0deg, rgba(255,255,255,.7) 0deg 1deg, transparent 1deg 6deg);
+  animation: warpzoom 1.2s cubic-bezier(.6,0,.9,1) forwards; }
+@keyframes warpzoom { 0% { transform: scale(.2); opacity: 0; } 30% { opacity: 1; } 100% { transform: scale(6); opacity: 0; } }
+.warp-label { position: relative; color: #cbd5ff; font-family: 'Outfit', system-ui, sans-serif; font-weight: 700; }
