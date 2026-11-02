@@ -1,6 +1,13 @@
+import { useEffect } from 'react';
 import './SkyOverlay.css';
 
 export default function SkyOverlay({ star, onPlay, onClose }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   if (!star) return null;
   return (
     <div className="sky-capsule" role="dialog" aria-label={`${star.name} details`}>

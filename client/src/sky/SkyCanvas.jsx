@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { hitTest, generateStarfield } from './skyModel';
+import { CLUSTERS } from './games';
 import './SkyCanvas.css';
 
 export default function SkyCanvas({ stars, effects, width, height, onSelect }) {
@@ -76,5 +77,5 @@ export default function SkyCanvas({ stars, effects, width, height, onSelect }) {
 }
 
 function clusterColor(cluster) {
-  return cluster === 'word' ? '#f472b6' : cluster === 'party' ? '#34d399' : '#38bdf8';
+  return (CLUSTERS[cluster] && CLUSTERS[cluster].color) || '#38bdf8';
 }

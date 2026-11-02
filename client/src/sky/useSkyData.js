@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { socket as defaultSocket } from '../socket';
 import { SKY_GAMES } from './games';
 import { layoutStars, applyCounts, makeEffect } from './skyModel';
@@ -12,8 +12,6 @@ export function useSkyData({ width, height, seed = 42, socket = defaultSocket })
   const [counts, setCounts] = useState({});
   const [totalPlayers, setTotalPlayers] = useState(0);
   const [effects, setEffects] = useState([]);
-  const effectsRef = useRef(effects);
-  effectsRef.current = effects;
 
   useEffect(() => {
     const onState = (state) => {
@@ -23,7 +21,7 @@ export function useSkyData({ width, height, seed = 42, socket = defaultSocket })
       setTotalPlayers(state.totalPlayers || 0);
     };
     const onEvent = (ev) => {
-      setEffects((prev) => [...prev, makeEffect(ev.type, ev, 2200)]);
+      setEffects((prev) => [...prev, makeEffect(ev.type, ev, 2200)].slice(-20));
     };
     socket.on('sky:state', onState);
     socket.on('sky:event', onEvent);
