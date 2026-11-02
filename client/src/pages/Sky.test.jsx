@@ -8,7 +8,7 @@ beforeAll(() => {
     moveTo() {}, lineTo() {}, stroke() {}, set strokeStyle(_) {}, set lineWidth(_) {},
     closePath() {}, setLineDash() {}, set lineDashOffset(_) {}, createLinearGradient() { return { addColorStop() {} }; }, ellipse() {}, rotate() {},
     clearRect() {}, beginPath() {}, arc() {}, fill() {}, save() {}, restore() {}, fillRect() {},
-    createRadialGradient() { return { addColorStop() {} }; }, fillText() {}, translate() {}, scale() {},
+    createRadialGradient() { return { addColorStop() {} }; }, rect() {}, strokeRect() {}, bezierCurveTo() {}, set lineCap(_) {}, set lineJoin(_) {}, fillText() {}, translate() {}, scale() {},
     set fillStyle(_) {}, set globalAlpha(_) {}, set font(_) {}, set textAlign(_) {}, set shadowBlur(_) {}, set shadowColor(_) {},
   });
   global.requestAnimationFrame = (cb) => setTimeout(() => cb(16), 0);

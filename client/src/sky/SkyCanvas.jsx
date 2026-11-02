@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { hitTest, generateStarfield, clusterCentroids, effectProgress, cometPos, makeCamera, screenToWorld, clampCamera } from './skyModel';
 import { CLUSTERS } from './games';
+import { drawMotif } from './motifs';
 import './SkyCanvas.css';
 
 export default function SkyCanvas({ stars, effects, width, height, onSelect }) {
@@ -20,7 +21,6 @@ export default function SkyCanvas({ stars, effects, width, height, onSelect }) {
     canvas.height = height * dpr;
     ctx.scale(dpr, dpr);
 
-    // three parallax starfield layers: far (small, still) -> near (big, drifts most)
     const total = Math.min(520, Math.round((width * height) / 1600));
     const layers = [
       { field: generateStarfield(11, Math.round(total * 0.5), width, height), depth: 7, size: 0.7, tw: 1.6 },
@@ -34,17 +34,17 @@ export default function SkyCanvas({ stars, effects, width, height, onSelect }) {
       const t = (now - start) / 1000;
       const { stars } = stateRef.current;
       const mouse = mouseRef.current;
-      const nx = (mouse.x - width / 2) / width;   // ~ -0.5..0.5
+      const nx = (mouse.x - width / 2) / width;
       const ny = (mouse.y - height / 2) / height;
       ctx.clearRect(0, 0, width, height);
 
-      // ---- background starfield (screen space, mouse parallax) ----
+      // --- background starfield (screen space, parallax) ---
       for (const layer of layers) {
         const ox = -nx * layer.depth + Math.sin(t * 0.05) * layer.depth * 0.4;
         const oy = -ny * layer.depth + Math.cos(t * 0.04) * layer.depth * 0.4;
         ctx.fillStyle = '#ffffff';
         for (const s of layer.field) {
-          ctx.globalAlpha = 0.25 + 0.5 * (0.5 + 0.5 * Math.sin(t * layer.tw + s.phase));
+          ctx.globalAlpha = 0.22 + 0.45 * (0.5 + 0.5 * Math.sin(t * layer.tw + s.phase));
           ctx.beginPath();
           ctx.arc(s.x + ox, s.y + oy, s.r * layer.size, 0, Math.PI * 2);
           ctx.fill();
@@ -52,141 +52,100 @@ export default function SkyCanvas({ stars, effects, width, height, onSelect }) {
       }
       ctx.globalAlpha = 1;
 
-      // ---- ambient shooting stars ----
+      // --- ambient shooting stars ---
       const sh = shootRef.current;
       if (now > sh.next) {
-        sh.next = now + 2600 + Math.random() * 4200;
+        sh.next = now + 3000 + Math.random() * 4500;
         const fromLeft = Math.random() < 0.5;
-        sh.list.push({
-          x: fromLeft ? -40 : width + 40, y: Math.random() * height * 0.6,
-          vx: (fromLeft ? 1 : -1) * (320 + Math.random() * 260), vy: 120 + Math.random() * 120,
-          born: now, life: 1100,
-        });
+        sh.list.push({ x: fromLeft ? -40 : width + 40, y: Math.random() * height * 0.55, vx: (fromLeft ? 1 : -1) * (320 + Math.random() * 240), vy: 110 + Math.random() * 110, born: now, life: 1100 });
       }
       sh.list = sh.list.filter((m) => now - m.born < m.life);
       for (const m of sh.list) {
         const p = (now - m.born) / m.life;
         const dt = (now - m.born) / 1000;
         const x = m.x + m.vx * dt, y = m.y + m.vy * dt;
-        const tailX = x - m.vx * 0.06, tailY = y - m.vy * 0.06;
-        const grad = ctx.createLinearGradient(tailX, tailY, x, y);
-        grad.addColorStop(0, 'rgba(255,255,255,0)');
-        grad.addColorStop(1, `rgba(255,255,255,${0.9 * (1 - p)})`);
-        ctx.strokeStyle = grad; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(tailX, tailY); ctx.lineTo(x, y); ctx.stroke();
+        const g = ctx.createLinearGradient(x - m.vx * 0.06, y - m.vy * 0.06, x, y);
+        g.addColorStop(0, 'rgba(255,255,255,0)');
+        g.addColorStop(1, `rgba(255,255,255,${0.85 * (1 - p)})`);
+        ctx.strokeStyle = g; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(x - m.vx * 0.06, y - m.vy * 0.06); ctx.lineTo(x, y); ctx.stroke();
       }
 
-      // ---- foreground: constellation world (pan/zoom camera) ----
+      // --- foreground constellation (pan/zoom) ---
       ctx.save();
       ctx.translate(camRef.current.x, camRef.current.y);
       ctx.scale(camRef.current.scale, camRef.current.scale);
 
       const centroids = clusterCentroids(stars);
-      const driftX = Math.sin(t * 0.08) * 16;
-      const driftY = Math.cos(t * 0.06) * 12;
+      const driftX = Math.sin(t * 0.08) * 14;
+      const driftY = Math.cos(t * 0.06) * 10;
 
-      // drifting nebula tints + labels
+      // very soft field of colour per cluster (kept subtle — flat radial, low alpha)
       for (const [cluster, c] of Object.entries(centroids)) {
         const col = (CLUSTERS[cluster] && CLUSTERS[cluster].color) || '#38bdf8';
         const cx = c.x + driftX, cy = c.y + driftY;
-        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 240);
-        grad.addColorStop(0, hexA(col, 0.16));
+        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 230);
+        grad.addColorStop(0, hexA(col, 0.1));
         grad.addColorStop(1, hexA(col, 0));
         ctx.fillStyle = grad;
-        ctx.fillRect(cx - 240, cy - 240, 480, 480);
-        const rad = Math.max(40, ...stars.filter((s) => s.cluster === cluster).map((s) => Math.hypot(s.x - c.x, s.y - c.y)));
-        ctx.fillStyle = hexA(col, 0.6);
-        ctx.font = '600 11px Outfit, system-ui';
-        ctx.textAlign = 'center';
-        ctx.fillText(((CLUSTERS[cluster] && CLUSTERS[cluster].label) || '').toUpperCase(), c.x, c.y - rad - 22);
+        ctx.fillRect(cx - 230, cy - 230, 460, 460);
       }
 
-      // energy-conduit links: faint base polygon + light particles flowing along it
+      // quiet links — a thin flat line between ring neighbours (no dashes, no particles)
       for (const cluster of Object.keys(centroids)) {
         const members = stars.filter((s) => s.cluster === cluster).sort((a, b) => (a.ring || 0) - (b.ring || 0));
         if (members.length < 2) continue;
         const col = (CLUSTERS[cluster] && CLUSTERS[cluster].color) || '#38bdf8';
-        ctx.strokeStyle = hexA(col, 0.12);
+        ctx.strokeStyle = hexA(col, 0.16);
         ctx.lineWidth = 1;
         ctx.beginPath();
         members.forEach((s, i) => (i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y)));
         ctx.closePath();
         ctx.stroke();
-        const perEdge = 3;
-        ctx.shadowColor = col;
-        for (let i = 0; i < members.length; i++) {
-          const a = members[i];
-          const b = members[(i + 1) % members.length];
-          for (let k = 0; k < perEdge; k++) {
-            const frac = (((t * 0.12 + i + k / perEdge) % 1) + 1) % 1;
-            const px = a.x + (b.x - a.x) * frac;
-            const py = a.y + (b.y - a.y) * frac;
-            const fade = 0.4 + 0.6 * Math.sin(frac * Math.PI);
-            ctx.fillStyle = hexA(col, 0.85 * fade);
-            ctx.shadowBlur = 6;
-            ctx.beginPath(); ctx.arc(px, py, 1.7, 0, Math.PI * 2); ctx.fill();
-          }
-        }
-        ctx.shadowBlur = 0;
       }
 
-      // hovered star (world space)
       const mw = screenToWorld(camRef.current, mouse.x, mouse.y);
       const hovered = mouse.inside ? hitTest(stars, mw.x, mw.y) : null;
       const hoverId = hovered && hovered.id;
 
-      // game stars as ringed celestial bodies: a tilted orbital ring whose
-      // moons are live players, a breathing glowing core, hover emphasis.
+      // --- nodes: a flat disc carrying the game's own motif ---
       for (const star of stars) {
         const col = clusterColor(star.cluster);
-        const breathe = 1 + 0.07 * Math.sin(t * 1.4 + star.x * 0.05);
+        const players = star.players || 0;
         const isHover = star.id === hoverId;
-        const r = star.radius * breathe * (isHover ? 1.4 : 1);
-        const bright = star.brightness ?? 0.6;
-        const ringR = r * 1.95;
-        const tilt = ((star.x + star.y) % 7) * 0.12 - 0.4; // stable per-node tilt
+        const discR = (isHover ? 1.12 : 1) * (15 + Math.min(9, Math.log2(players + 1) * 2.6));
 
-        // orbital ring + moons (players)
-        ctx.save();
-        ctx.translate(star.x, star.y);
-        ctx.rotate(tilt);
-        ctx.strokeStyle = hexA(col, isHover ? 0.6 : 0.32);
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, ringR, ringR * 0.4, 0, 0, Math.PI * 2);
-        ctx.stroke();
-        const moons = Math.min(star.players || 0, 8);
-        for (let k = 0; k < moons; k++) {
-          const a = (k / moons) * Math.PI * 2 + t * 0.5;
-          ctx.fillStyle = '#ffffff';
-          ctx.shadowBlur = 5; ctx.shadowColor = col;
-          ctx.beginPath(); ctx.arc(Math.cos(a) * ringR, Math.sin(a) * ringR * 0.4, 1.9, 0, Math.PI * 2); ctx.fill();
+        // flat surface disc (a tone step up from the ground, tinted to the cluster)
+        ctx.fillStyle = isHover ? hexA(col, 0.26) : hexA(col, 0.14);
+        ctx.beginPath(); ctx.arc(star.x, star.y, discR, 0, Math.PI * 2); ctx.fill();
+
+        // ring — its strength is the data (busier games read brighter)
+        ctx.strokeStyle = hexA(col, Math.min(0.95, 0.4 + players * 0.06) + (isHover ? 0.15 : 0));
+        ctx.lineWidth = isHover ? 2 : 1.5;
+        ctx.beginPath(); ctx.arc(star.x, star.y, discR, 0, Math.PI * 2); ctx.stroke();
+
+        // the game's identity, drawn in code
+        drawMotif(ctx, star.id, star.x, star.y, discR * 0.5, isHover ? '#ffffff' : '#e3e9ff');
+
+        // player count, honest, only when there are any
+        if (players > 0) {
+          ctx.fillStyle = col;
+          ctx.font = '700 11px Outfit, system-ui';
+          ctx.textAlign = 'center';
+          ctx.fillText(String(players), star.x + discR * 0.78, star.y - discR * 0.78);
         }
-        ctx.shadowBlur = 0;
-        ctx.restore();
 
-        // glowing core
-        const g = ctx.createRadialGradient(star.x, star.y, 1, star.x, star.y, r);
-        g.addColorStop(0, '#ffffff');
-        g.addColorStop(0.55, col);
-        g.addColorStop(1, hexA(col, 0.25));
-        ctx.fillStyle = g;
-        ctx.shadowBlur = (isHover ? 30 : 15) * bright + 6 * Math.sin(t * 1.4 + star.x);
-        ctx.shadowColor = col;
-        ctx.beginPath(); ctx.arc(star.x, star.y, r, 0, Math.PI * 2); ctx.fill();
-        ctx.shadowBlur = 0;
-
-        // label, clear of the ring
-        const labelY = star.y + ringR + 13;
-        ctx.font = isHover ? '700 13px Outfit, system-ui' : '600 12px Outfit, system-ui';
+        // name, confident, below the disc
+        const labelY = star.y + discR + 15;
+        ctx.font = isHover ? '700 14px Outfit, system-ui' : '600 13px Outfit, system-ui';
         ctx.textAlign = 'center';
-        ctx.fillStyle = 'rgba(0,0,0,0.7)';
-        ctx.fillText(star.name, star.x + 0.5, labelY + 0.5);
-        ctx.fillStyle = isHover ? '#ffffff' : '#dbe4ff';
+        ctx.fillStyle = 'rgba(5,6,16,0.85)';
+        ctx.fillText(star.name, star.x + 0.6, labelY + 0.6);
+        ctx.fillStyle = isHover ? '#ffffff' : '#e3e9ff';
         ctx.fillText(star.name, star.x, labelY);
       }
 
-      // live effects: win supernova + migration comets
+      // live events: win pulse + migration comet
       const activeEffects = stateRef.current.effects || [];
       if (activeEffects.length) {
         const byId = Object.fromEntries(stars.map((s) => [s.id, s]));
@@ -197,7 +156,7 @@ export default function SkyCanvas({ stars, effects, width, height, onSelect }) {
             const s = byId[e.payload.game]; if (!s) continue;
             ctx.strokeStyle = `rgba(253,230,138,${1 - p})`;
             ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.arc(s.x, s.y, 6 + p * 90, 0, Math.PI * 2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(s.x, s.y, 16 + p * 80, 0, Math.PI * 2); ctx.stroke();
           } else if (e.type === 'move') {
             const a = byId[e.payload.from]; const b = byId[e.payload.to]; if (!a || !b) continue;
             const pos = cometPos(a, b, p);
@@ -238,11 +197,9 @@ export default function SkyCanvas({ stars, effects, width, height, onSelect }) {
   };
 
   const handleClick = (e) => {
-    if (dragRef.current && dragRef.current.moved) return; // a drag, not a click
+    if (dragRef.current && dragRef.current.moved) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    const sx = e.clientX - rect.left;
-    const sy = e.clientY - rect.top;
-    const w = screenToWorld(camRef.current, sx, sy);
+    const w = screenToWorld(camRef.current, e.clientX - rect.left, e.clientY - rect.top);
     const hit = hitTest(stateRef.current.stars, w.x, w.y);
     if (hit) onSelect(hit);
   };
