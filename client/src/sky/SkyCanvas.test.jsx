@@ -32,4 +32,14 @@ describe('SkyCanvas', () => {
     fireEvent.click(canvas, { clientX: 122, clientY: 92 });
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'chess' }));
   });
+
+  it('hit-tests in world space when panned/zoomed', () => {
+    const onSelect = vi.fn();
+    const { container } = render(<SkyCanvas stars={stars} effects={[]} width={400} height={300} onSelect={onSelect} />);
+    const canvas = container.querySelector('canvas');
+    canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 400, height: 300 });
+    fireEvent.wheel(canvas, { deltaY: -100, clientX: 120, clientY: 90 });
+    fireEvent.click(canvas, { clientX: 120, clientY: 90 });
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'chess' }));
+  });
 });

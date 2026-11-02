@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react';
-import { hitTest, generateStarfield, clusterCentroids, effectProgress, cometPos } from './skyModel';
+import { hitTest, generateStarfield, clusterCentroids, effectProgress, cometPos, makeCamera, screenToWorld, clampCamera } from './skyModel';
 import { CLUSTERS } from './games';
 import './SkyCanvas.css';
 
 export default function SkyCanvas({ stars, effects, width, height, onSelect }) {
   const canvasRef = useRef(null);
+  const camRef = useRef(makeCamera());
   const stateRef = useRef({ stars, effects });
   stateRef.current = { stars, effects };
 
@@ -23,6 +24,9 @@ export default function SkyCanvas({ stars, effects, width, height, onSelect }) {
       const t = (now - start) / 1000;
       const { stars } = stateRef.current;
       ctx.clearRect(0, 0, width, height);
+      ctx.save();
+      ctx.translate(camRef.current.x, camRef.current.y);
+      ctx.scale(camRef.current.scale, camRef.current.scale);
 
       // starfield
       for (const s of field) {
@@ -91,19 +95,40 @@ export default function SkyCanvas({ stars, effects, width, height, onSelect }) {
           ctx.beginPath(); ctx.arc(pos.x, pos.y, 3, 0, Math.PI * 2); ctx.fill();
         }
       }
+      ctx.restore();
     };
     const loop = (now) => { if (!document.hidden) draw(now); raf = requestAnimationFrame(loop); };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
   }, [width, height]);
 
+  const dragRef = useRef(null);
+
   const handleClick = (e) => {
+    if (dragRef.current && dragRef.current.moved) return; // a drag, not a click
     const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const hit = hitTest(stateRef.current.stars, x, y);
+    const sx = e.clientX - rect.left;
+    const sy = e.clientY - rect.top;
+    const w = screenToWorld(camRef.current, sx, sy);
+    const hit = hitTest(stateRef.current.stars, w.x, w.y);
     if (hit) onSelect(hit);
   };
+
+  const onWheel = (e) => {
+    e.preventDefault();
+    const cam = camRef.current;
+    const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+    camRef.current = clampCamera({ ...cam, scale: cam.scale * factor }, { width, height });
+  };
+  const onPointerDown = (e) => { dragRef.current = { x: e.clientX, y: e.clientY, cam: { ...camRef.current }, moved: false }; };
+  const onPointerMove = (e) => {
+    const d = dragRef.current;
+    if (!d) return;
+    const dx = e.clientX - d.x; const dy = e.clientY - d.y;
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) d.moved = true;
+    camRef.current = clampCamera({ ...d.cam, x: d.cam.x + dx, y: d.cam.y + dy }, { width, height });
+  };
+  const onPointerUp = () => { setTimeout(() => { dragRef.current = null; }, 0); };
 
   return (
     <canvas
@@ -111,6 +136,11 @@ export default function SkyCanvas({ stars, effects, width, height, onSelect }) {
       className="sky-canvas"
       style={{ width, height }}
       onClick={handleClick}
+      onWheel={onWheel}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerLeave={onPointerUp}
       aria-hidden="true"
     />
   );
