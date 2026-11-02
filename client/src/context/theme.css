@@ -59,3 +59,12 @@
     --chat-sender: #0088cc;
     --chat-sender-self: #00aa66;
 }
+[data-theme="cosmic"] {
+    --bg-primary: #070812;
+    --bg-secondary: #0c0e1a;
+    --text-primary: #ffffff;
+    --text-secondary: #9aa3cf;
+    --accent: #818cf8;
+    --accent-hover: #6366f1;
+    --border-color: rgba(129,140,248,.3);
+}
