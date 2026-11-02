@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { socket } from '../socket';
 import { useToast } from '../context/ToastContext';
 import { useLobby } from '../context/LobbyContext';
@@ -63,6 +63,7 @@ function Games() {
     return (
         <div className="games-container">
             <h2>Select a Game</h2>
+            <Link to="/sky" className="sky-beta-link">✨ Try the new sky (beta)</Link>
 
             {/* Category tabs */}
             <div className="category-tabs">
