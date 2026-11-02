@@ -23,7 +23,10 @@ export default function Sky() {
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
-    const measure = () => setSize({ width: el.clientWidth, height: Math.max(420, el.clientHeight) });
+    const measure = () => setSize({
+      width: el.clientWidth || window.innerWidth,
+      height: Math.max(420, el.clientHeight || window.innerHeight),
+    });
     measure();
     window.addEventListener('resize', measure);
     return () => window.removeEventListener('resize', measure);

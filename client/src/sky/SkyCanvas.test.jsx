@@ -5,6 +5,7 @@ import SkyCanvas from './SkyCanvas';
 beforeAll(() => {
   HTMLCanvasElement.prototype.getContext = () => ({
     moveTo() {}, lineTo() {}, stroke() {}, set strokeStyle(_) {}, set lineWidth(_) {},
+    closePath() {}, setLineDash() {}, set lineDashOffset(_) {}, createLinearGradient() { return { addColorStop() {} }; },
     clearRect() {}, beginPath() {}, arc() {}, fill() {}, save() {}, restore() {},
     fillRect() {}, createRadialGradient() { return { addColorStop() {} }; },
     set fillStyle(_) {}, set globalAlpha(_) {}, set font(_) {}, fillText() {},
