@@ -4,7 +4,7 @@ import { CLUSTERS } from './games';
 import { drawMotif } from './motifs';
 import './SkyCanvas.css';
 
-export default function SkyCanvas({ stars, effects, width, height, onSelect }) {
+export default function SkyCanvas({ stars, effects, width, height, onSelect, interactive = true }) {
   const canvasRef = useRef(null);
   const camRef = useRef(makeCamera());
   const stateRef = useRef({ stars, effects });
@@ -175,6 +175,7 @@ export default function SkyCanvas({ stars, effects, width, height, onSelect }) {
   const dragRef = useRef(null);
 
   useEffect(() => {
+    if (!interactive) return undefined;
     const canvas = canvasRef.current;
     const handler = (e) => {
       e.preventDefault();
@@ -204,7 +205,7 @@ export default function SkyCanvas({ stars, effects, width, height, onSelect }) {
     if (hit) onSelect(hit);
   };
 
-  const onPointerDown = (e) => { dragRef.current = { x: e.clientX, y: e.clientY, cam: { ...camRef.current }, moved: false }; };
+  const onPointerDown = (e) => { if (!interactive) return; dragRef.current = { x: e.clientX, y: e.clientY, cam: { ...camRef.current }, moved: false }; };
   const onPointerMove = (e) => {
     trackMouse(e);
     const d = dragRef.current;

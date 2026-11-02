@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { socket } from '../socket';
 import { API_URL } from '../config';
-import { SKY_GAMES, CLUSTERS } from '../sky/games';
+import { SKY_GAMES } from '../sky/games';
+import { layoutStars, applyCounts } from '../sky/skyModel';
+import SkyCanvas from '../sky/SkyCanvas';
 import MotifIcon from '../components/MotifIcon';
 import './Home.css';
 
@@ -14,11 +16,12 @@ const GROUPS = [
 
 export default function Home() {
   const navigate = useNavigate();
+  const heroRef = useRef(null);
   const [counts, setCounts] = useState({});
   const [totalPlayers, setTotalPlayers] = useState(0);
   const [board, setBoard] = useState([]);
+  const [hero, setHero] = useState({ w: 900, h: 520 });
 
-  // the product performing: live player counts over the real socket
   useEffect(() => {
     const onState = (state) => {
       const map = {};
@@ -30,7 +33,6 @@ export default function Home() {
     return () => socket.off('sky:state', onState);
   }, []);
 
-  // real leaderboard numbers for the standings
   useEffect(() => {
     fetch(`${API_URL}/api/leaderboard`)
       .then((r) => (r.ok ? r.json() : {}))
@@ -45,21 +47,28 @@ export default function Home() {
       .catch(() => {});
   }, []);
 
-  // section entrances (motion layer)
+  useEffect(() => {
+    const el = heroRef.current;
+    if (!el) return;
+    const measure = () => setHero({ w: el.clientWidth || window.innerWidth, h: el.clientHeight || 520 });
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, []);
+
   useEffect(() => {
     const els = document.querySelectorAll('.hp-in');
     const io = new IntersectionObserver((entries) => {
       entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('hp-vis'); io.unobserve(e.target); } });
-    }, { threshold: 0.15 });
+    }, { threshold: 0.14 });
     els.forEach((el) => io.observe(el));
     return () => io.disconnect();
   }, []);
 
   const play = (g) => navigate(`/game/${g.route}/local`, { state: { gameType: g.id, isLocal: true } });
-
-  const liveTop = useMemo(
-    () => [...SKY_GAMES].sort((a, b) => (counts[b.id] || 0) - (counts[a.id] || 0)).slice(0, 6),
-    [counts]
+  const heroStars = useMemo(
+    () => applyCounts(layoutStars(SKY_GAMES, { width: hero.w, height: hero.h }), counts),
+    [hero.w, hero.h, counts]
   );
 
   return (
@@ -74,70 +83,51 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* ---------- hero: headline + the live product fragment ---------- */}
-      <header className="hp-hero">
-        <div className="hp-hero-left">
+      {/* ---------- hero: the living constellation ---------- */}
+      <header className="hp-hero" ref={heroRef}>
+        <div className="hp-hero-sky" aria-hidden="true">
+          <SkyCanvas stars={heroStars} effects={[]} width={hero.w} height={hero.h} onSelect={play} interactive={false} />
+        </div>
+        <div className="hp-hero-copy">
           <h1 className="hp-title">
-            <span className="hp-reveal"><span>Board games with</span></span>
-            <span className="hp-reveal"><span>anyone, live.</span></span>
+            <span className="hp-reveal"><span>Fourteen games,</span></span>
+            <span className="hp-reveal"><span>written in the stars.</span></span>
           </h1>
-          <p className="hp-lead">Fourteen real-time games. Share a room code. No downloads — open a tab and play.</p>
+          <p className="hp-lead">A whole sky of real-time board and word games. Pick a star, share a room code, play. {totalPlayers > 0 ? `${totalPlayers} playing now.` : ''}</p>
           <div className="hp-actions">
-            <button className="hp-cta" onClick={() => navigate('/games')}>Browse the games</button>
-            <button className="hp-link" onClick={() => navigate('/sky')}>Enter the sky →</button>
+            <button className="hp-cta" onClick={() => navigate('/sky')}>Enter the sky</button>
+            <button className="hp-link" onClick={() => navigate('/games')}>Classic list →</button>
           </div>
         </div>
+      </header>
 
-        <div className="hp-hero-right">
-          <section className="hp-panel" data-ui aria-label="Now playing">
-            <div className="hp-panel-head">
-              <span>Now playing</span>
-              <span className="hp-live">{totalPlayers} in a game</span>
-            </div>
-            <ul className="hp-panel-list">
-              {liveTop.map((g) => (
+      {/* ---------- every game ---------- */}
+      <section className="hp-games hp-in" id="games">
+        <h2>Fourteen games.</h2>
+        {GROUPS.map((grp) => (
+          <div className="hp-group hp-in" key={grp.key}>
+            <h3>{grp.label}</h3>
+            <ul className="hp-grid" data-ui>
+              {SKY_GAMES.filter((g) => g.cluster === grp.key).map((g) => (
                 <li key={g.id}>
                   <button onClick={() => play(g)}>
-                    <MotifIcon id={g.id} size={28} color="#e3e9ff" />
-                    <span className="hp-panel-name">{g.name}</span>
-                    <span className="hp-panel-n">{counts[g.id] || 0}</span>
+                    <MotifIcon id={g.id} size={44} color="#e3e9ff" />
+                    <span className="hp-game-name">{g.name}</span>
+                    <span className="hp-game-n">{(counts[g.id] || 0) > 0 ? `${counts[g.id]} playing` : 'Open'}</span>
                   </button>
                 </li>
               ))}
             </ul>
-          </section>
-        </div>
-      </header>
-
-      {/* ---------- every game, as the real choose-a-game interface ---------- */}
-      <section className="hp-games hp-in" id="games">
-        <h2>Fourteen games.</h2>
-        {GROUPS.map((grp) => {
-          const games = SKY_GAMES.filter((g) => g.cluster === grp.key);          return (
-            <div className="hp-group hp-in" key={grp.key}>
-              <h3>{grp.label}</h3>
-              <ul className="hp-grid" data-ui>
-                {games.map((g) => (
-                  <li key={g.id}>
-                    <button onClick={() => play(g)}>
-                      <MotifIcon id={g.id} size={44} color="#1f2b4d" />
-                      <span className="hp-game-name">{g.name}</span>
-                      <span className="hp-game-n">{(counts[g.id] || 0) > 0 ? `${counts[g.id]} playing` : 'Open'}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          );
-        })}
+          </div>
+        ))}
       </section>
 
-      {/* ---------- how it works: statement + a real fragment each ---------- */}
+      {/* ---------- how it works ---------- */}
       <section className="hp-how hp-in">
         <h2>Three moves to a game.</h2>
 
         <div className="hp-step-row hp-in">
-          <div className="hp-step-text"><h3>Pick a game.</h3><p>Fourteen to choose from — a chess grid, a word board, an atom chain. Each opens straight away.</p></div>
+          <div className="hp-step-text"><h3>Pick a star.</h3><p>Every game is a star in the sky — a chess grid, a word board, an atom chain. Click one and it opens.</p></div>
           <div className="hp-frag" data-ui aria-label="Choose a game">
             <div className="hp-frag-head">Choose a game</div>
             {SKY_GAMES.slice(0, 4).map((g) => (
@@ -171,15 +161,15 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ---------- standings (real numbers) ---------- */}
+      {/* ---------- standings ---------- */}
       <section className="hp-standings hp-in">
         <div className="hp-standings-text">
           <h2>Every win is kept.</h2>
-          <p>Every finished online match adds to the board. Bots and pass-and-play do not.</p>
+          <p>Each finished online match adds to the board. Bots and pass-and-play do not.</p>
           <button className="hp-link" onClick={() => navigate('/leaderboard')}>See the full board →</button>
         </div>
-        <section className="hp-panel" data-ui aria-label="Leaderboard">
-          <div className="hp-panel-head"><span>Top players</span><span className="hp-live">by wins</span></div>
+        <section className="hp-frag" data-ui aria-label="Leaderboard">
+          <div className="hp-frag-head">Top players<span className="hp-live">by wins</span></div>
           {board.length === 0 ? (
             <p className="hp-empty">No wins recorded yet — be the first.</p>
           ) : (
@@ -194,12 +184,11 @@ export default function Home() {
         </section>
       </section>
 
-      {/* ---------- close ---------- */}
       <section className="hp-end hp-in">
-        <h2>Open a game.</h2>
+        <h2>The sky is open.</h2>
         <div className="hp-actions">
-          <button className="hp-cta" onClick={() => navigate('/games')}>Browse the games</button>
-          <button className="hp-link" onClick={() => navigate('/sky')}>Enter the sky →</button>
+          <button className="hp-cta" onClick={() => navigate('/sky')}>Enter the sky</button>
+          <button className="hp-link" onClick={() => navigate('/games')}>Classic list →</button>
         </div>
       </section>
 
