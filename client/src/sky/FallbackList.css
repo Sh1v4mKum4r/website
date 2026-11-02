@@ -1,0 +1,7 @@
+.sky-fallback { list-style: none; margin: 0; padding: 16px; display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+.sky-fallback-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; border-radius: 14px; cursor: pointer;
+  background: #14171c; border: 1px solid #23272e; color: #fff; font-family: 'Outfit', system-ui, sans-serif; text-align: left; }
+.sky-fallback-item:hover, .sky-fallback-item:focus-visible { border-color: #818cf8; outline: none; }
+.sky-fallback-glyph { font-size: 20px; }
+.sky-fallback-name { font-weight: 700; }
+.sky-fallback-count { margin-left: auto; font-size: 11px; color: #9aa0a8; }
