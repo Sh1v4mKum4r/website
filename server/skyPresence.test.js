@@ -47,4 +47,25 @@ check('buildWinEvent returns null when no gameType', () => {
   assert.strictEqual(buildWinEvent({}), null);
 });
 
+check('bots are excluded from player counts but the room still counts', () => {
+  const state = computeSkyState({
+    L: { players: [], rooms: { R: { gameType: 'chess', players: { h: 'X', 'bot-x': 'O' } } } },
+  });
+  assert.strictEqual(state.games[0].players, 1);
+  assert.strictEqual(state.games[0].rooms, 1);
+  assert.strictEqual(state.totalPlayers, 1);
+});
+
+check('rooms without a gameType are skipped', () => {
+  const state = computeSkyState({
+    L: { players: [], rooms: { R: { players: { a: 'X' } } } },
+  });
+  assert.deepStrictEqual(state.games, []);
+  assert.strictEqual(state.totalPlayers, 0);
+});
+
+check('buildWinEvent returns null for null room', () => {
+  assert.strictEqual(buildWinEvent(null), null);
+});
+
 console.log(`\n${passed} passed`);

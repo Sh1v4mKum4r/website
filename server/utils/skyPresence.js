@@ -11,7 +11,7 @@ function computeSkyState(lobbies) {
     for (const room of Object.values(rooms)) {
       const game = room.gameType;
       if (!game) continue;
-      const count = Object.keys(room.players || {}).length;
+      const count = Object.keys(room.players || {}).filter((id) => !id.startsWith('bot-')).length;
       totalPlayers += count;
       const agg = byGame.get(game) || { players: 0, rooms: 0 };
       agg.players += count;
@@ -29,6 +29,7 @@ function computeSkyState(lobbies) {
   return { totalPlayers, games };
 }
 
+// The caller decides when a real win happened; do not call this on draws.
 function buildWinEvent(room) {
   if (!room || !room.gameType) return null;
   return { type: 'win', game: room.gameType };
