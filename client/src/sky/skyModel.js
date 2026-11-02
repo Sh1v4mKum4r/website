@@ -40,3 +40,27 @@ export function layoutStars(games, { width, height, seed = 1 }) {
     return { id: g.id, name: g.name, route: g.route, cluster: g.cluster, glyph: g.glyph, x, y };
   });
 }
+
+export function applyCounts(stars, countsById) {
+  const counts = countsById || {};
+  return stars.map((s) => {
+    const players = counts[s.id] || 0;
+    return { ...s, players, radius: sizeFor(players), brightness: brightnessFor(players) };
+  });
+}
+
+export function hitTest(stars, x, y) {
+  let best = null;
+  let bestDist = Infinity;
+  for (const s of stars) {
+    const dx = s.x - x;
+    const dy = s.y - y;
+    const dist = Math.hypot(dx, dy);
+    const r = Math.max(s.radius || 10, 14); // generous touch target
+    if (dist <= r && dist < bestDist) {
+      best = s;
+      bestDist = dist;
+    }
+  }
+  return best;
+}
