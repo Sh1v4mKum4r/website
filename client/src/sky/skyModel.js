@@ -105,3 +105,24 @@ export function clampCamera(cam, { width, height }) {
   const y = Math.min(0, Math.max(-maxPan.y, cam.y));
   return { x, y, scale };
 }
+
+export function clusterCentroids(stars) {
+  const acc = {};
+  for (const s of stars) {
+    const a = acc[s.cluster] || { x: 0, y: 0, n: 0 };
+    a.x += s.x; a.y += s.y; a.n += 1;
+    acc[s.cluster] = a;
+  }
+  const out = {};
+  for (const [k, a] of Object.entries(acc)) out[k] = { x: a.x / a.n, y: a.y / a.n };
+  return out;
+}
+
+export function effectProgress(effect) {
+  if (!effect.ttl) return 1;
+  return Math.min(1, Math.max(0, effect.t / effect.ttl));
+}
+
+export function cometPos(from, to, p) {
+  return { x: from.x + (to.x - from.x) * p, y: from.y + (to.y - from.y) * p };
+}
