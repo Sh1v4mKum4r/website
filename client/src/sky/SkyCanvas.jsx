@@ -101,53 +101,89 @@ export default function SkyCanvas({ stars, effects, width, height, onSelect }) {
         ctx.fillText(((CLUSTERS[cluster] && CLUSTERS[cluster].label) || '').toUpperCase(), c.x, c.y - rad - 22);
       }
 
-      // flowing constellation lines (energy running along them)
-      ctx.strokeStyle = 'rgba(170,190,255,0.30)';
-      ctx.lineWidth = 1.3;
-      ctx.setLineDash([5, 9]);
-      ctx.lineDashOffset = -t * 22;
+      // energy-conduit links: faint base polygon + light particles flowing along it
       for (const cluster of Object.keys(centroids)) {
         const members = stars.filter((s) => s.cluster === cluster).sort((a, b) => (a.ring || 0) - (b.ring || 0));
         if (members.length < 2) continue;
+        const col = (CLUSTERS[cluster] && CLUSTERS[cluster].color) || '#38bdf8';
+        ctx.strokeStyle = hexA(col, 0.12);
+        ctx.lineWidth = 1;
         ctx.beginPath();
         members.forEach((s, i) => (i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y)));
         ctx.closePath();
         ctx.stroke();
+        const perEdge = 3;
+        ctx.shadowColor = col;
+        for (let i = 0; i < members.length; i++) {
+          const a = members[i];
+          const b = members[(i + 1) % members.length];
+          for (let k = 0; k < perEdge; k++) {
+            const frac = (((t * 0.12 + i + k / perEdge) % 1) + 1) % 1;
+            const px = a.x + (b.x - a.x) * frac;
+            const py = a.y + (b.y - a.y) * frac;
+            const fade = 0.4 + 0.6 * Math.sin(frac * Math.PI);
+            ctx.fillStyle = hexA(col, 0.85 * fade);
+            ctx.shadowBlur = 6;
+            ctx.beginPath(); ctx.arc(px, py, 1.7, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+        ctx.shadowBlur = 0;
       }
-      ctx.setLineDash([]);
 
       // hovered star (world space)
       const mw = screenToWorld(camRef.current, mouse.x, mouse.y);
       const hovered = mouse.inside ? hitTest(stars, mw.x, mw.y) : null;
       const hoverId = hovered && hovered.id;
 
-      // game stars (breathing + bloom + hover)
+      // game stars as ringed celestial bodies: a tilted orbital ring whose
+      // moons are live players, a breathing glowing core, hover emphasis.
       for (const star of stars) {
         const col = clusterColor(star.cluster);
         const breathe = 1 + 0.07 * Math.sin(t * 1.4 + star.x * 0.05);
         const isHover = star.id === hoverId;
-        const r = star.radius * breathe * (isHover ? 1.45 : 1);
+        const r = star.radius * breathe * (isHover ? 1.4 : 1);
         const bright = star.brightness ?? 0.6;
-        if (isHover) {
-          ctx.strokeStyle = hexA(col, 0.6);
-          ctx.lineWidth = 1.5;
-          ctx.beginPath(); ctx.arc(star.x, star.y, r + 9, 0, Math.PI * 2); ctx.stroke();
+        const ringR = r * 1.95;
+        const tilt = ((star.x + star.y) % 7) * 0.12 - 0.4; // stable per-node tilt
+
+        // orbital ring + moons (players)
+        ctx.save();
+        ctx.translate(star.x, star.y);
+        ctx.rotate(tilt);
+        ctx.strokeStyle = hexA(col, isHover ? 0.6 : 0.32);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, ringR, ringR * 0.4, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        const moons = Math.min(star.players || 0, 8);
+        for (let k = 0; k < moons; k++) {
+          const a = (k / moons) * Math.PI * 2 + t * 0.5;
+          ctx.fillStyle = '#ffffff';
+          ctx.shadowBlur = 5; ctx.shadowColor = col;
+          ctx.beginPath(); ctx.arc(Math.cos(a) * ringR, Math.sin(a) * ringR * 0.4, 1.9, 0, Math.PI * 2); ctx.fill();
         }
+        ctx.shadowBlur = 0;
+        ctx.restore();
+
+        // glowing core
         const g = ctx.createRadialGradient(star.x, star.y, 1, star.x, star.y, r);
         g.addColorStop(0, '#ffffff');
-        g.addColorStop(1, col);
+        g.addColorStop(0.55, col);
+        g.addColorStop(1, hexA(col, 0.25));
         ctx.fillStyle = g;
-        ctx.shadowBlur = (isHover ? 34 : 16) * bright + 8 * Math.sin(t * 1.4 + star.x);
+        ctx.shadowBlur = (isHover ? 30 : 15) * bright + 6 * Math.sin(t * 1.4 + star.x);
         ctx.shadowColor = col;
         ctx.beginPath(); ctx.arc(star.x, star.y, r, 0, Math.PI * 2); ctx.fill();
         ctx.shadowBlur = 0;
-        // legible game-name label
+
+        // label, clear of the ring
+        const labelY = star.y + ringR + 13;
         ctx.font = isHover ? '700 13px Outfit, system-ui' : '600 12px Outfit, system-ui';
         ctx.textAlign = 'center';
-        ctx.fillStyle = 'rgba(0,0,0,0.65)';
-        ctx.fillText(star.name, star.x + 0.5, star.y + r + 15.5);
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.fillText(star.name, star.x + 0.5, labelY + 0.5);
         ctx.fillStyle = isHover ? '#ffffff' : '#dbe4ff';
-        ctx.fillText(star.name, star.x, star.y + r + 15);
+        ctx.fillText(star.name, star.x, labelY);
       }
 
       // live effects: win supernova + migration comets
