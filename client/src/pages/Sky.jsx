@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import SkyCanvas from '../sky/SkyCanvas';
+import SkyGL from '../sky/SkyGL';
 import SkyOverlay from '../sky/SkyOverlay';
 import WarpTransition from '../sky/WarpTransition';
 import FallbackList from '../sky/FallbackList';
 import { useSkyData } from '../sky/useSkyData';
+import { useAmbientAudio } from '../sky/useAmbientAudio';
 import './Sky.css';
 
 const prefersReducedMotion = () =>
@@ -18,6 +19,7 @@ export default function Sky() {
   const [size, setSize] = useState({ width: 800, height: 560 });
   const [selected, setSelected] = useState(null);
   const [warpGame, setWarpGame] = useState(null);
+  const [soundOn, toggleSound] = useAmbientAudio();
   const reduced = prefersReducedMotion();
 
   useEffect(() => {
@@ -32,7 +34,7 @@ export default function Sky() {
     return () => window.removeEventListener('resize', measure);
   }, []);
 
-  const { stars, totalPlayers, effects } = useSkyData({ width: size.width, height: size.height });
+  const { stars, totalPlayers } = useSkyData({ width: size.width, height: size.height });
 
   const play = (star) => {
     if (reduced) { navigate(`/game/${star.route}/local`, { state: { gameType: star.id, isLocal: true } }); return; }
@@ -45,6 +47,7 @@ export default function Sky() {
       <header className="sky-head">
         <h2>The Sky</h2>
         <span className="sky-total">◍ {totalPlayers} playing</span>
+        <button className="sky-back" onClick={toggleSound} aria-pressed={soundOn}>{soundOn ? 'Sound on' : 'Sound off'}</button>
         <Link className="sky-back" to="/games">Classic view</Link>
       </header>
 
@@ -52,7 +55,7 @@ export default function Sky() {
         <FallbackList stars={stars} onPlay={play} />
       ) : (
         <div className="sky-surface">
-          <SkyCanvas stars={stars} effects={effects} width={size.width} height={size.height} onSelect={setSelected} />
+          <SkyGL stars={stars} onSelect={setSelected} />
           <SkyOverlay star={selected} onPlay={play} onClose={() => setSelected(null)} />
           <div className="sr-only"><FallbackList stars={stars} onPlay={play} /></div>
         </div>

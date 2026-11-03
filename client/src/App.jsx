@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastProvider } from './context/ToastContext';
 import { ThemeProvider } from './context/ThemeContext';
 import Home from './pages/Home';
 import Games from './pages/Games';
 import Game from './pages/Game';
-import Sky from './pages/Sky';
+// The Sky route pulls in three.js + bloom postprocessing (~600KB). Code-split it
+// so it loads only when someone enters the constellation, never on the homepage.
+const Sky = lazy(() => import('./pages/Sky'));
 import Leaderboard from './pages/Leaderboard';
 import MainLayout from './layouts/MainLayout';
 import './context/theme.css';
@@ -21,7 +23,7 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route element={<MainLayout />}>
                 <Route path="/games" element={<Games />} />
-                <Route path="/sky" element={<Sky />} />
+                <Route path="/sky" element={<Suspense fallback={<div className="sky-boot" />}><Sky /></Suspense>} />
                 <Route path="/leaderboard" element={<Leaderboard />} />
                 <Route path="/game/tic-tac-toe/:roomCode" element={<Game />} />
                 <Route path="/game/connect4/:roomCode" element={<Game />} />

@@ -1,0 +1,12 @@
+.skygl { position: absolute; inset: 0; }
+.skygl-mount { position: absolute; inset: 0; }
+.skygl-mount canvas { display: block; touch-action: none; }
+.skygl-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+.skygl-label {
+  position: absolute; top: 0; left: 0;
+  font-family: 'Outfit', system-ui, sans-serif;
+  font-size: 13px; font-weight: 600; color: #e7ecff;
+  white-space: nowrap; text-shadow: 0 1px 4px rgba(0,0,0,0.85);
+  will-change: transform, opacity; transition: color 0.2s;
+}
+.skygl-label-hot { color: #ffffff; font-weight: 700; }

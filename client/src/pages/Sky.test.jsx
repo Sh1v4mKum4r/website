@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Sky from './Sky';
+vi.mock('../sky/SkyGL', () => ({ default: () => null }));
 
 beforeAll(() => {
   HTMLCanvasElement.prototype.getContext = () => ({
