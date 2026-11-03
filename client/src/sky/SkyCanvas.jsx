@@ -91,58 +91,62 @@ export default function SkyCanvas({ stars, effects, width, height, onSelect, int
         ctx.fillRect(cx - 230, cy - 230, 460, 460);
       }
 
-      // quiet links — a thin flat line between ring neighbours (no dashes, no particles)
+      // where the cursor points, in world space
+      const mw = screenToWorld(camRef.current, mouse.x, mouse.y);
+      const hovered = mouse.inside ? hitTest(stars, mw.x, mw.y) : null;
+      const hoverId = hovered && hovered.id;
+
+      // links — the cluster the cursor is over lights up
       for (const cluster of Object.keys(centroids)) {
         const members = stars.filter((s) => s.cluster === cluster).sort((a, b) => (a.ring || 0) - (b.ring || 0));
         if (members.length < 2) continue;
         const col = (CLUSTERS[cluster] && CLUSTERS[cluster].color) || '#38bdf8';
-        ctx.strokeStyle = hexA(col, 0.16);
-        ctx.lineWidth = 1;
+        const lit = hovered && hovered.cluster === cluster;
+        ctx.strokeStyle = hexA(col, lit ? 0.5 : 0.16);
+        ctx.lineWidth = lit ? 1.6 : 1;
         ctx.beginPath();
         members.forEach((s, i) => (i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y)));
         ctx.closePath();
         ctx.stroke();
       }
 
-      const mw = screenToWorld(camRef.current, mouse.x, mouse.y);
-      const hovered = mouse.inside ? hitTest(stars, mw.x, mw.y) : null;
-      const hoverId = hovered && hovered.id;
-
-      // --- nodes: a flat disc carrying the game's own motif ---
+      // --- nodes: a disc whose motif performs the game, reactive to the cursor ---
       for (const star of stars) {
         const col = clusterColor(star.cluster);
         const players = star.players || 0;
         const isHover = star.id === hoverId;
-        const discR = (isHover ? 1.12 : 1) * (15 + Math.min(9, Math.log2(players + 1) * 2.6));
+        // cursor spotlight: nearby stars grow, brighten and lean toward the pointer
+        const mdx = mw.x - star.x, mdy = mw.y - star.y;
+        const spot = mouse.inside ? Math.max(0, 1 - Math.hypot(mdx, mdy) / 240) : 0;
+        const x = star.x + mdx * 0.05 * spot;
+        const y = star.y + mdy * 0.05 * spot;
+        const discR = (1 + spot * 0.22 + (isHover ? 0.14 : 0)) * (15 + Math.min(9, Math.log2(players + 1) * 2.6));
 
-        // flat surface disc (a tone step up from the ground, tinted to the cluster)
-        ctx.fillStyle = isHover ? hexA(col, 0.26) : hexA(col, 0.14);
-        ctx.beginPath(); ctx.arc(star.x, star.y, discR, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = hexA(col, 0.14 + spot * 0.14);
+        ctx.beginPath(); ctx.arc(x, y, discR, 0, Math.PI * 2); ctx.fill();
 
-        // ring — its strength is the data (busier games read brighter)
-        ctx.strokeStyle = hexA(col, Math.min(0.95, 0.4 + players * 0.06) + (isHover ? 0.15 : 0));
-        ctx.lineWidth = isHover ? 2 : 1.5;
-        ctx.beginPath(); ctx.arc(star.x, star.y, discR, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = hexA(col, Math.min(0.98, 0.4 + players * 0.06 + spot * 0.4));
+        ctx.lineWidth = 1.5 + spot * 0.8;
+        ctx.beginPath(); ctx.arc(x, y, discR, 0, Math.PI * 2); ctx.stroke();
 
-        // the game's identity, drawn in code
-        drawMotif(ctx, star.id, star.x, star.y, discR * 0.5, isHover ? '#ffffff' : '#e3e9ff');
+        // the motif performs its game — ambient slowly, faster under the cursor
+        const amb = (((t * 0.16 + star.x * 0.013) % 1) + 1) % 1;
+        const fast = (((t * 0.5 + star.x * 0.013) % 1) + 1) % 1;
+        const phase = (isHover || spot > 0.5) ? fast : amb;
+        drawMotif(ctx, star.id, x, y, discR * 0.5, isHover ? '#ffffff' : '#e7ecff', phase, col);
 
-        // player count, honest, only when there are any
         if (players > 0) {
-          ctx.fillStyle = col;
-          ctx.font = '700 11px Outfit, system-ui';
-          ctx.textAlign = 'center';
-          ctx.fillText(String(players), star.x + discR * 0.78, star.y - discR * 0.78);
+          ctx.fillStyle = col; ctx.font = '700 11px Outfit, system-ui'; ctx.textAlign = 'center';
+          ctx.fillText(String(players), x + discR * 0.78, y - discR * 0.78);
         }
 
-        // name, confident, below the disc
-        const labelY = star.y + discR + 15;
-        ctx.font = isHover ? '700 14px Outfit, system-ui' : '600 13px Outfit, system-ui';
+        const labelY = y + discR + 15;
+        ctx.font = (isHover || spot > 0.6) ? '700 14px Outfit, system-ui' : '600 13px Outfit, system-ui';
         ctx.textAlign = 'center';
         ctx.fillStyle = 'rgba(5,6,16,0.85)';
-        ctx.fillText(star.name, star.x + 0.6, labelY + 0.6);
-        ctx.fillStyle = isHover ? '#ffffff' : '#e3e9ff';
-        ctx.fillText(star.name, star.x, labelY);
+        ctx.fillText(star.name, x + 0.6, labelY + 0.6);
+        ctx.fillStyle = isHover ? '#ffffff' : '#e7ecff';
+        ctx.fillText(star.name, x, labelY);
       }
 
       // live events: win pulse + migration comet
