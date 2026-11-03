@@ -11,6 +11,7 @@ const Sky = lazy(() => import('./pages/Sky'));
 import Leaderboard from './pages/Leaderboard';
 import MainLayout from './layouts/MainLayout';
 import './context/theme.css';
+import './styles/cosmic.css';
 import './App.css';
 
 function App() {

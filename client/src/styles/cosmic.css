@@ -1,0 +1,23 @@
+/* Shared cosmic design language — the tokens the homepage/sky established,
+   lifted into one place so the navbar and browse pages speak the same visual
+   language. Namespaced --co-* so it never collides with theme.css (which the
+   in-game boards still rely on). */
+@import url('https://fonts.googleapis.com/css2?family=Work+Sans:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --co-bg: #070812;
+  --co-bg-2: #0a0c1a;
+  --co-surface: #121829;
+  --co-surface-2: #1a2238;
+  --co-line: rgba(255, 255, 255, 0.08);
+  --co-ink: #e9edff;
+  --co-muted: #98a1c6;
+  --co-dim: #6b739b;
+  --co-accent: #f7941d;
+  --co-accent-hi: #ffa836;
+  --co-strategy: #38bdf8;
+  --co-word: #f472b6;
+  --co-party: #34d399;
+  --co-m: clamp(20px, 4vw, 64px);
+  --co-sans: 'Work Sans', system-ui, -apple-system, sans-serif;
+}

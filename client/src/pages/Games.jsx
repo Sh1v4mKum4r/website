@@ -3,6 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { socket } from '../socket';
 import { useToast } from '../context/ToastContext';
 import { useLobby } from '../context/LobbyContext';
+import MotifIcon from '../components/MotifIcon';
+import { SKY_GAMES, CLUSTERS } from '../sky/games';
 import './Games.css';
 
 const GAMES = [
@@ -23,10 +25,14 @@ const GAMES = [
 ];
 
 const CATEGORIES = [
-    { key: 'pnp', label: 'Pass-n-Play', icon: '🎮', desc: 'Play on the same device' },
-    { key: '2p', label: '2-Player', icon: '⚔️', desc: 'Play online 1v1' },
-    { key: 'mp', label: 'Multiplayer', icon: '🌐', desc: '3+ players online' },
+    { key: 'pnp', label: 'Pass & Play', desc: 'Two players, one device — hand it back and forth.' },
+    { key: '2p', label: '2-Player', desc: 'Share a room code and play online, one on one.' },
+    { key: 'mp', label: 'Multiplayer', desc: 'Three or more friends in the same room.' },
 ];
+
+// Each game's home cluster + colour, so the grid carries the sky's identity.
+const CLUSTER_OF = Object.fromEntries(SKY_GAMES.map((g) => [g.id, g.cluster]));
+const colorFor = (id) => (CLUSTERS[CLUSTER_OF[id]] || CLUSTERS.strategy).color;
 
 function Games() {
     const navigate = useNavigate();
@@ -59,65 +65,88 @@ function Games() {
     };
 
     const gamesForCategory = GAMES.filter(g => g.modes.includes(activeCategory));
+    const activeDesc = CATEGORIES.find(c => c.key === activeCategory)?.desc;
 
     return (
-        <div className="games-container">
-            <h2>Select a Game</h2>
-            <Link to="/sky" className="sky-beta-link">✨ Try the new sky (beta)</Link>
+        <div className="games-page">
+            <div className="games-inner">
+                <header className="games-head">
+                    <p className="games-eyebrow">The arcade</p>
+                    <h1 className="games-title">Choose your game.</h1>
+                    <p className="games-lead">
+                        Fourteen board, word and party games — play on one device or share a room code online.
+                    </p>
+                    <Link to="/sky" className="games-sky-link">
+                        <span className="games-sky-spark" aria-hidden="true">✦</span>
+                        Explore them as a constellation
+                        <span aria-hidden="true">→</span>
+                    </Link>
+                </header>
 
-            {/* Category tabs */}
-            <div className="category-tabs">
-                {CATEGORIES.map(cat => (
-                    <button
-                        key={cat.key}
-                        className={`category-tab ${activeCategory === cat.key ? 'active' : ''}`}
-                        onClick={() => setActiveCategory(cat.key)}
-                    >
-                        <span className="tab-icon">{cat.icon}</span>
-                        <span className="tab-label">{cat.label}</span>
-                    </button>
-                ))}
-            </div>
-
-            <p className="category-desc">{CATEGORIES.find(c => c.key === activeCategory)?.desc}</p>
-
-            {/* Series selector — only for online modes */}
-            {(activeCategory === '2p' || activeCategory === 'mp') && (
-                <div className="series-selector">
-                    <span>Match type:</span>
-                    <div className="series-options">
-                        {[
-                            { value: 0, label: 'Single' },
-                            { value: 3, label: 'Bo3' },
-                            { value: 5, label: 'Bo5' },
-                        ].map(opt => (
-                            <button
-                                key={opt.value}
-                                className={`series-option ${seriesLength === opt.value ? 'active' : ''}`}
-                                onClick={() => setSeriesLength(opt.value)}
-                            >
-                                {opt.label}
-                            </button>
-                        ))}
-                    </div>
+                <div className="co-tabs" role="tablist" aria-label="Game modes">
+                    {CATEGORIES.map(cat => (
+                        <button
+                            key={cat.key}
+                            role="tab"
+                            aria-selected={activeCategory === cat.key}
+                            className={`co-tab ${activeCategory === cat.key ? 'active' : ''}`}
+                            onClick={() => setActiveCategory(cat.key)}
+                        >
+                            {cat.label}
+                        </button>
+                    ))}
                 </div>
-            )}
 
-            {/* Game cards */}
-            <div className="game-list">
-                {gamesForCategory.map(game => (
-                    <div
-                        key={game.id}
-                        className="game-selection-card"
-                        onClick={() => activeCategory === 'pnp' ? handlePassNPlay(game) : handleOnlineGame(game)}
-                    >
-                        <h3>{game.name}</h3>
-                        <p>{game.desc}</p>
-                        <span className="play-badge">
-                            {activeCategory === 'pnp' ? '▶ Play Now' : '🔗 Create Room'}
-                        </span>
+                <p className="co-tab-desc">{activeDesc}</p>
+
+                {(activeCategory === '2p' || activeCategory === 'mp') && (
+                    <div className="co-series">
+                        <span className="co-series-label">Match type</span>
+                        <div className="co-series-options">
+                            {[
+                                { value: 0, label: 'Single' },
+                                { value: 3, label: 'Best of 3' },
+                                { value: 5, label: 'Best of 5' },
+                            ].map(opt => (
+                                <button
+                                    key={opt.value}
+                                    className={`co-series-option ${seriesLength === opt.value ? 'active' : ''}`}
+                                    onClick={() => setSeriesLength(opt.value)}
+                                >
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                ))}
+                )}
+
+                <ul className="co-grid">
+                    {gamesForCategory.map(game => {
+                        const color = colorFor(game.id);
+                        return (
+                            <li key={game.id}>
+                                <button
+                                    className="co-card"
+                                    style={{ '--c': color }}
+                                    onClick={() => activeCategory === 'pnp' ? handlePassNPlay(game) : handleOnlineGame(game)}
+                                >
+                                    <span className="co-card-glow" aria-hidden="true" />
+                                    <span className="co-card-icon">
+                                        <MotifIcon id={game.id} size={44} color={color} />
+                                    </span>
+                                    <span className="co-card-body">
+                                        <span className="co-card-name">{game.name}</span>
+                                        <span className="co-card-desc">{game.desc}</span>
+                                    </span>
+                                    <span className="co-card-cta">
+                                        {activeCategory === 'pnp' ? 'Play' : 'Create room'}
+                                        <span aria-hidden="true"> →</span>
+                                    </span>
+                                </button>
+                            </li>
+                        );
+                    })}
+                </ul>
             </div>
         </div>
     );
