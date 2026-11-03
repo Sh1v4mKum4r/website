@@ -15,9 +15,32 @@
   --co-dim: #6b739b;
   --co-accent: #f7941d;
   --co-accent-hi: #ffa836;
+  --co-accent-ink: #241403;
+  --co-nav: rgba(7, 8, 18, 0.72);
   --co-strategy: #38bdf8;
   --co-word: #f472b6;
   --co-party: #34d399;
   --co-m: clamp(20px, 4vw, 64px);
   --co-sans: 'Work Sans', system-ui, -apple-system, sans-serif;
 }
+
+/* Arcade world: the same chrome + browse pages go light & candy. */
+[data-world="arcade"] {
+  --co-bg: #fff3e6;
+  --co-bg-2: #fff7fb;
+  --co-surface: #ffffff;
+  --co-surface-2: #fff1f7;
+  --co-line: rgba(58, 33, 64, 0.10);
+  --co-ink: #3a2140;
+  --co-muted: #6b4a66;
+  --co-dim: #a98aa0;
+  --co-accent: #ff5ca8;
+  --co-accent-hi: #ff79ba;
+  --co-accent-ink: #ffffff;
+  --co-nav: rgba(255, 243, 230, 0.78);
+}
+
+/* world-switch circular reveal: let the new world wipe in over the old frame */
+::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+::view-transition-new(root) { z-index: 1; }
+::view-transition-old(root) { z-index: 0; }

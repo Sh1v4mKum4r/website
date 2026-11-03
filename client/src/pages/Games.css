@@ -85,7 +85,7 @@
     transition: color 0.2s, background 0.2s;
 }
 .co-tab:hover { color: var(--co-ink); }
-.co-tab.active { color: #241403; background: var(--co-accent); font-weight: 600; }
+.co-tab.active { color: var(--co-accent-ink); background: var(--co-accent); font-weight: 600; }
 
 .co-tab-desc { margin: 16px 0 0; color: var(--co-muted); font-size: 1rem; }
 

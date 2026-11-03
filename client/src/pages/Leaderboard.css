@@ -50,7 +50,7 @@
 .lb-empty-cta {
     display: inline-block;
     margin-top: 24px;
-    font-size: 0.95rem; font-weight: 600; color: #241403;
+    font-size: 0.95rem; font-weight: 600; color: var(--co-accent-ink);
     background: var(--co-accent); border-radius: 999px;
     padding: 11px 22px; text-decoration: none;
     transition: background 0.2s;
@@ -96,7 +96,7 @@
     color: var(--co-muted);
     background: rgba(255, 255, 255, 0.04);
 }
-.lb-list .rank-1 .lb-rank { color: #241403; background: var(--co-accent); }
+.lb-list .rank-1 .lb-rank { color: var(--co-accent-ink); background: var(--co-accent); }
 .lb-list .rank-2 .lb-rank { color: #0c0e1a; background: #cdd6ff; }
 .lb-list .rank-3 .lb-rank { color: #0c0e1a; background: #b08d57; }
 .lb-name { flex: 1; min-width: 0; color: var(--co-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

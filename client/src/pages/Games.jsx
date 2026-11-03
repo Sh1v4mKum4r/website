@@ -74,7 +74,7 @@ function Games() {
                     <p className="games-eyebrow">The arcade</p>
                     <h1 className="games-title">Choose your game.</h1>
                     <p className="games-lead">
-                        Fourteen board, word and party games — play on one device or share a room code online.
+                        Board, word and party games — play on one device, or share a room code and play online.
                     </p>
                     <Link to="/sky" className="games-sky-link">
                         <span className="games-sky-spark" aria-hidden="true">✦</span>
