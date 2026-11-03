@@ -1,11 +1,9 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { EffectComposer, EffectPass, RenderPass, BloomEffect, KernelSize } from 'postprocessing';
 import { CLUSTERS } from './games';
 import { drawMotif } from './motifs';
+import { nebulaVert, nebulaFrag } from './nebulaShader';
 
 // a soft radial dot, reused for stars, glows and nebulae
 function glowTexture() {
@@ -57,7 +55,7 @@ export default function SkyGL({ stars, onSelect, onHover }) {
 
     // --- deep starfield (three layers of points for depth) ---
     const fieldGroup = new THREE.Group();
-    [[2600, 900, 1.1, 0.5], [1500, 500, 1.8, 0.7], [700, 260, 3.2, 0.9]].forEach(([n, spread, size, op]) => {
+    [[2600, 900, 1.4, 0.7], [1500, 500, 2.4, 0.85], [700, 260, 4.2, 1.0]].forEach(([n, spread, size, op]) => {
       const geo = new THREE.BufferGeometry();
       const pos = new Float32Array(n * 3);
       for (let i = 0; i < n; i++) {
@@ -71,15 +69,26 @@ export default function SkyGL({ stars, onSelect, onHover }) {
     });
     scene.add(fieldGroup);
 
-    // --- nebulae: big additive glows at each cluster ---
-    const nebulae = [];
-    for (const [key, anchor] of Object.entries(ANCHORS)) {
-      const m = new THREE.SpriteMaterial({ map: tex, color: clusterColor(key), transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false });
-      const s = new THREE.Sprite(m);
-      s.position.copy(anchor).setZ(anchor.z - 30);
-      s.scale.setScalar(420);
-      scene.add(s); nebulae.push(s);
-    }
+    // --- nebula: a domain-warped fbm shader on a big background plane ---
+    const nebulaMat = new THREE.ShaderMaterial({
+      vertexShader: nebulaVert,
+      fragmentShader: nebulaFrag,
+      transparent: true,
+      depthWrite: false,
+      depthTest: false,
+      blending: THREE.AdditiveBlending,
+      fog: false,
+      uniforms: {
+        uTime: { value: 0 },
+        uC1: { value: clusterColor('strategy') },
+        uC2: { value: clusterColor('word') },
+        uC3: { value: clusterColor('party') },
+      },
+    });
+    const nebula = new THREE.Mesh(new THREE.PlaneGeometry(3400, 2000), nebulaMat);
+    nebula.position.set(0, 0, -520);
+    nebula.renderOrder = -1;
+    scene.add(nebula);
 
     // --- game stars: a bloom core + an animated motif, laid out in a ring per cluster ---
     const byCluster = {};
@@ -96,9 +105,13 @@ export default function SkyGL({ stars, onSelect, onHover }) {
         const p = new THREE.Vector3(anchor.x + Math.cos(ang) * R, anchor.y + Math.sin(ang) * R, anchor.z + (Math.random() - 0.5) * 24);
         const group = new THREE.Group(); group.position.copy(p);
 
+        // colored glow halo + a small white-hot centre so the star reads over gas
         const core = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color: col, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false }));
         core.scale.setScalar(26);
         group.add(core);
+        const hot = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color: 0xffffff, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
+        hot.scale.setScalar(10);
+        group.add(hot);
 
         // picking proxy (invisible, generous)
         const hit = new THREE.Mesh(new THREE.SphereGeometry(16, 8, 8), new THREE.MeshBasicMaterial({ visible: false }));
@@ -120,16 +133,22 @@ export default function SkyGL({ stars, onSelect, onHover }) {
         label.textContent = g.name;
         overlay.appendChild(label);
 
-        nodes.push({ game: g, group, core, mc, mctx: mc.getContext('2d'), mtex, motif, label, baseColor: col, p });
+        nodes.push({ game: g, group, core, hot, mc, mctx: mc.getContext('2d'), mtex, motif, label, baseColor: col, p });
       });
     }
 
-    // --- bloom ---
-    const composer = new EffectComposer(renderer);
+    // --- bloom (pmndrs: merged pass, mipmap blur, HDR buffer) ---
+    const composer = new EffectComposer(renderer, { frameBufferType: THREE.HalfFloatType });
     composer.addPass(new RenderPass(scene, camera));
-    const bloom = new UnrealBloomPass(new THREE.Vector2(W, H), 0.9, 0.7, 0.18);
-    composer.addPass(bloom);
-    composer.addPass(new OutputPass());
+    const bloom = new BloomEffect({
+      intensity: 1.5,
+      luminanceThreshold: 0.2,
+      luminanceSmoothing: 0.3,
+      mipmapBlur: true,
+      radius: 0.72,
+      kernelSize: KernelSize.HUGE,
+    });
+    composer.addPass(new EffectPass(camera, bloom));
 
     // --- interaction ---
     const ray = new THREE.Raycaster();
@@ -170,7 +189,7 @@ export default function SkyGL({ stars, onSelect, onHover }) {
       camera.position.z += (introZ - camera.position.z) * 0.06;
       camera.lookAt(0, 0, 0);
       fieldGroup.rotation.y = t * 0.006;
-      nebulae.forEach((s, i) => { s.position.x += Math.sin(t * 0.1 + i) * 0.03; });
+      nebulaMat.uniforms.uTime.value = t;
 
       // hover pick
       ray.setFromCamera(ndc, camera);
@@ -195,6 +214,8 @@ export default function SkyGL({ stars, onSelect, onHover }) {
         const scale = base * (isHover ? 1.5 : 1) * (1 + 0.05 * Math.sin(t * 1.5 + nd.p.x));
         nd.core.scale.setScalar(scale);
         nd.core.material.opacity = isHover ? 1 : 0.9;
+        nd.hot.scale.setScalar(scale * 0.4);
+        nd.hot.material.opacity = isHover ? 1 : 0.85;
         nd.motif.scale.setScalar(scale * 0.8);
         // project label
         tmp.copy(nd.group.position).project(camera);
@@ -206,7 +227,7 @@ export default function SkyGL({ stars, onSelect, onHover }) {
         nd.label.classList.toggle('skygl-label-hot', !!isHover);
       }
 
-      composer.render();
+      composer.render(dt);
     };
     animate();
 
@@ -225,6 +246,7 @@ export default function SkyGL({ stars, onSelect, onHover }) {
       renderer.domElement.removeEventListener('pointerleave', onLeave);
       renderer.domElement.removeEventListener('click', onClick);
       nodes.forEach((nd) => { nd.label.remove(); nd.mtex.dispose(); });
+      nebula.geometry.dispose(); nebulaMat.dispose();
       composer.dispose(); renderer.dispose();
       if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement);
     };
