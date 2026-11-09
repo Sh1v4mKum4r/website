@@ -17,9 +17,12 @@ const { getInitialImposterState, submitClue, submitVote, revealResults, nextRoun
 const { getInitialWordleState, submitGuess: wordleSubmitGuess } = require('./utils/wordleLogic');
 const { recordWin, getLeaderboard, getAllLeaderboards } = require('./db');
 const { computeSkyState, buildWinEvent, snapshotLocations, diffPresence } = require('./utils/skyPresence');
+const { createDdbProxy } = require('./dnd/ddbProxy');
 
 const app = express();
 app.use(cors());
+app.set('trust proxy', 1); // Render terminates TLS in front of us; req.ip must be the real client for rate limits
+app.use('/dnd', createDdbProxy());
 
 // ── Leaderboard REST API ──
 app.get('/api/leaderboard', (req, res) => {
